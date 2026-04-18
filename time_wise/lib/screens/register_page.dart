@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'register_page.dart';
+import 'login_page.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage>
+class _RegisterPageState extends State<RegisterPage>
     with SingleTickerProviderStateMixin {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
 
   bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   String message = "";
   bool _isSuccess = false;
 
@@ -44,32 +46,44 @@ class _LoginPageState extends State<LoginPage>
     _animController.dispose();
     usernameController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void handleLogin() async {
-    String result = await ApiService.login(
+  void handleRegister() async {
+    if (passwordController.text != confirmPasswordController.text) {
+      setState(() {
+        message = "Password tidak cocok";
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    String result = await ApiService.register(
       usernameController.text,
       passwordController.text,
     );
 
     setState(() {
-      if (result == "success") {
-        message = "Login Berhasil";
+      if (result == "registered") {
+        message = "Register Berhasil";
         _isSuccess = true;
         Navigator.pushReplacementNamed(context, '/HomePage');
+      } else if (result == "username_taken") {
+        message = "Username sudah digunakan";
+        _isSuccess = false;
       } else {
-        message = "Username atau password salah";
+        message = "Register gagal";
         _isSuccess = false;
       }
     });
   }
 
-  void _goToRegister() {
+  void _goToLogin() {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => RegisterPage(),
+        pageBuilder: (_, __, ___) => LoginPage(),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 300),
@@ -137,6 +151,7 @@ class _LoginPageState extends State<LoginPage>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Tab Login / Register
                         Container(
                           height: 50,
                           decoration: BoxDecoration(
@@ -145,6 +160,23 @@ class _LoginPageState extends State<LoginPage>
                           ),
                           child: Row(
                             children: [
+                              // Login — inactive
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: _goToLogin,
+                                  child: const Center(
+                                    child: Text(
+                                      "Login",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.normal,
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Register — active pill
                               Expanded(
                                 child: Container(
                                   height: 44,
@@ -163,26 +195,11 @@ class _LoginPageState extends State<LoginPage>
                                   ),
                                   alignment: Alignment.center,
                                   child: const Text(
-                                    "Login",
+                                    "Register",
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 14,
                                       color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: _goToRegister,
-                                  child: const Center(
-                                    child: Text(
-                                      "Register",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.normal,
-                                        fontSize: 14,
-                                        color: Colors.grey,
-                                      ),
                                     ),
                                   ),
                                 ),
@@ -209,15 +226,26 @@ class _LoginPageState extends State<LoginPage>
                               _isPasswordVisible = !_isPasswordVisible),
                         ),
 
+                        const SizedBox(height: 12),
+
+                        _buildPasswordField(
+                          controller: confirmPasswordController,
+                          hint: "Confirm Password",
+                          isVisible: _isConfirmPasswordVisible,
+                          onToggle: () => setState(() =>
+                              _isConfirmPasswordVisible =
+                                  !_isConfirmPasswordVisible),
+                        ),
+
                         const SizedBox(height: 10),
 
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             // GestureDetector(
-                            //   onTap: _goToRegister,
+                            //   onTap: _goToLogin,
                             //   child: const Text(
-                            //     "Belum Memiliki Account",
+                            //     "Sudah Memiliki Account",
                             //     style: TextStyle(
                             //       fontSize: 12,
                             //       color: Colors.black54,
@@ -245,7 +273,7 @@ class _LoginPageState extends State<LoginPage>
                           width: double.infinity,
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: handleLogin,
+                            onPressed: handleRegister,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF3DBE7A),
                               shape: RoundedRectangleBorder(
@@ -254,7 +282,7 @@ class _LoginPageState extends State<LoginPage>
                               elevation: 0,
                             ),
                             child: const Text(
-                              "Login",
+                              "Register",
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
