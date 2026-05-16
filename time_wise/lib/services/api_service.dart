@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-
+  // AUTO DETECT PLATFORM
   static String get baseUrl {
     if (kIsWeb) {
-      return "http://localhost:8080"; // Web
+      return "http://127.0.0.1:5000"; // Web
     } else {
-      return "http://10.0.2.2:8080"; // Android Emulator
+      return "http://10.0.2.2:5000"; // Android Emulator
     }
   }
 

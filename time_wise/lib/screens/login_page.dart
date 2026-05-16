@@ -69,8 +69,8 @@ class _LoginPageState extends State<LoginPage>
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => RegisterPage(),
-        transitionsBuilder: (_, anim, _, child) =>
+        pageBuilder: (_, __, ___) => RegisterPage(),
+        transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 300),
       ),
