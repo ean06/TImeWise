@@ -1,7 +1,33 @@
 import 'package:flutter/material.dart';
+import '../services/session_service.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  String _username = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final username = await SessionService.getUsername();
+    setState(() => _username = username);
+  }
+
+  Future<void> _logout() async {
+    await SessionService.clear();
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/LoginPage');
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -17,23 +43,17 @@ class ProfilePage extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // Header
               const Padding(
                 padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Profile',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: Text('Profile',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
                 ),
               ),
-
-              // Avatar
               const SizedBox(height: 20),
               Container(
                 width: 80,
@@ -42,30 +62,21 @@ class ProfilePage extends StatelessWidget {
                   color: Colors.white.withOpacity(0.3),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.person,
-                  size: 48,
-                  color: Colors.white,
-                ),
+                child: const Icon(Icons.person,
+                    size: 48, color: Colors.white),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Username',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
+              Text(
+                _username,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Pengguna TimeWise',
-                style: TextStyle(fontSize: 13, color: Colors.white70),
-              ),
-
+              const Text('Pengguna TimeWise',
+                  style: TextStyle(fontSize: 13, color: Colors.white70)),
               const SizedBox(height: 28),
-
-              // Menu list
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -80,35 +91,27 @@ class ProfilePage extends StatelessWidget {
                   child: Column(
                     children: [
                       _buildMenuItem(
-                        icon: Icons.person_outline,
-                        label: 'Edit Profile',
-                        onTap: () {},
-                      ),
+                          icon: Icons.person_outline,
+                          label: 'Edit Profile',
+                          onTap: () {}),
                       _buildMenuItem(
-                        icon: Icons.lock_outline,
-                        label: 'Ubah Password',
-                        onTap: () {},
-                      ),
+                          icon: Icons.lock_outline,
+                          label: 'Ubah Password',
+                          onTap: () {}),
                       _buildMenuItem(
-                        icon: Icons.notifications_outlined,
-                        label: 'Notifikasi',
-                        onTap: () {},
-                      ),
+                          icon: Icons.notifications_outlined,
+                          label: 'Notifikasi',
+                          onTap: () {}),
                       _buildMenuItem(
-                        icon: Icons.info_outline,
-                        label: 'Tentang Aplikasi',
-                        onTap: () {},
-                      ),
+                          icon: Icons.info_outline,
+                          label: 'Tentang Aplikasi',
+                          onTap: () {}),
                       const SizedBox(height: 8),
                       _buildMenuItem(
-                        icon: Icons.logout,
-                        label: 'Keluar',
-                        color: Colors.redAccent,
-                        onTap: () {
-                          Navigator.pushReplacementNamed(
-                              context, '/LoginPage');
-                        },
-                      ),
+                          icon: Icons.logout,
+                          label: 'Keluar',
+                          color: Colors.redAccent,
+                          onTap: _logout),
                     ],
                   ),
                 ),
@@ -130,30 +133,26 @@ class ProfilePage extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: const Color(0xFFF8F9FA),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
-            Icon(icon, color: color ?? const Color(0xFF2EAD65), size: 22),
+            Icon(icon,
+                color: color ?? const Color(0xFF2EAD65), size: 22),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: color ?? Colors.black87,
-                ),
-              ),
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: color ?? Colors.black87)),
             ),
-            Icon(
-              Icons.chevron_right,
-              color: color ?? Colors.black26,
-              size: 20,
-            ),
+            Icon(Icons.chevron_right,
+                color: color ?? Colors.black26, size: 20),
           ],
         ),
       ),

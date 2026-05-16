@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/session_service.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -48,22 +49,32 @@ class _LoginPageState extends State<LoginPage>
   }
 
   void handleLogin() async {
-    String result = await ApiService.login(
+    final result = await ApiService.login(
       usernameController.text,
       passwordController.text,
     );
 
     setState(() {
-      if (result == "success") {
+      if (result['status'] == 'success') {
         message = "Login Berhasil";
         _isSuccess = true;
-        Navigator.pushReplacementNamed(context, '/HomePage');
       } else {
         message = "Username atau password salah";
         _isSuccess = false;
       }
     });
+
+    if (result['status'] == 'success') {
+      await SessionService.saveSession(
+        idAkun: result['idAkun'],
+        username: result['username'],
+      );
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/HomePage');
+    }
   }
+
+
 
   void _goToRegister() {
     Navigator.pushReplacement(

@@ -136,8 +136,6 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-// ── Dashboard Page ─────────────────────────────────────────────────────────────
-
 class _DashboardPage extends StatelessWidget {
   const _DashboardPage();
 
@@ -155,7 +153,6 @@ class _DashboardPage extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // ── Header ──────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                 child: Row(
@@ -202,7 +199,6 @@ class _DashboardPage extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // ── Summary strip ────────────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
@@ -218,7 +214,6 @@ class _DashboardPage extends StatelessWidget {
 
               const SizedBox(height: 28),
 
-              // ── White card ───────────────────────────────────
               Expanded(
                 child: Container(
                   width: double.infinity,
