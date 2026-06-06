@@ -6,13 +6,13 @@ class SessionService {
     required String username,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('idAkun', idAkun);
+    await prefs.setInt('id_akun', idAkun); 
     await prefs.setString('username', username);
   }
 
   static Future<int> getIdAkun() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('idAkun') ?? 0;
+    return prefs.getInt('id_akun') ?? 0;
   }
 
   static Future<String> getUsername() async {

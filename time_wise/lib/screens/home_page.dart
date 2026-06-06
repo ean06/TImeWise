@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:time_wise/services/session_service.dart';
 import 'jadwal_page.dart';
 import 'tugas_page.dart';
 import 'timer_page.dart';
@@ -16,12 +17,12 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    _DashboardPage(),
+    DashboardPage(),
     JadwalPage(),
     TugasPage(),
+    ProfilePage(),
     TimerPage(),
     LaporanPage(),
-    ProfilePage(),
   ];
 
   @override
@@ -45,34 +46,71 @@ class _BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  const _BottomNavBar({
-    required this.currentIndex,
-    required this.onTap,
-  });
+  const _BottomNavBar({required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+      color: Colors.transparent,
+      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24, top: 10),
+      child: Container(
+        height: 65,
+        decoration: BoxDecoration(
+          color: const Color(0xFF2EAD65).withOpacity(0.2),
+          borderRadius: BorderRadius.circular(35),
+          border: Border.all(
+            color: const Color(0xFF2EAD65).withOpacity(0.3),
+            width: 1,
           ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(index: 0, currentIndex: currentIndex, icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', onTap: onTap),
-              _NavItem(index: 2, currentIndex: currentIndex, icon: Icons.check_box_outlined, activeIcon: Icons.check_box, label: 'Tugas', onTap: onTap),
-              _NavItem(index: 5, currentIndex: currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', onTap: onTap),
-            ],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2EAD65).withOpacity(0.15),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(35),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NavItem(
+                  index: 0,
+                  currentIndex: currentIndex,
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
+                  label: 'Home',
+                  onTap: onTap,
+                ),
+                _NavItem(
+                  index: 1,
+                  currentIndex: currentIndex,
+                  icon: Icons.calendar_month_outlined,
+                  activeIcon: Icons.calendar_month,
+                  label: 'Jadwal',
+                  onTap: onTap,
+                ),
+                _NavItem(
+                  index: 2,
+                  currentIndex: currentIndex,
+                  icon: Icons.check_box_outlined,
+                  activeIcon: Icons.check_box,
+                  label: 'Tugas',
+                  onTap: onTap,
+                ),
+                _NavItem(
+                  index: 3,
+                  currentIndex: currentIndex,
+                  icon: Icons.person_outline,
+                  activeIcon: Icons.person,
+                  label: 'Profile',
+                  onTap: onTap,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -100,44 +138,79 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = currentIndex == index;
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive
-              ? const Color(0xFF2EAD65).withOpacity(0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? const Color(0xFF2EAD65) : Colors.grey,
-              size: 22,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight:
-                    isActive ? FontWeight.w600 : FontWeight.normal,
-                color: isActive ? const Color(0xFF2EAD65) : Colors.grey,
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(index),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFF2EAD65) : Colors.transparent,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isActive ? activeIcon : icon,
+                color: isActive ? Colors.white : const Color(0xFF2EAD65),
+                size: 22,
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? Colors.white : const Color(0xFF2EAD65),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _DashboardPage extends StatelessWidget {
-  const _DashboardPage();
+// ── Dashboard Page ─────────────────────────────────────────────────────────────
+
+class DashboardPage extends StatefulWidget {
+  const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  String _username = 'Pengguna';
+
+  @override
+  void initState() {           // ✅ FIXED: nama method benar
+    super.initState();         // ✅ FIXED: dipanggil di tempat yang benar
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final username = await SessionService.getUsername();
+    if (mounted) {             // ✅ Cek mounted sebelum setState
+      setState(() {
+        _username = username;
+      });
+    }
+  }
+
+  String _greetingText() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Selamat Pagi!';
+    if (hour < 15) return 'Selamat Siang!';
+    if (hour < 18) return 'Selamat Sore!';
+    return 'Selamat Malam!';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,61 +227,90 @@ class _DashboardPage extends StatelessWidget {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
                       children: [
-                        const Text(
-                          'TIMEWISE',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                        // Avatar inisial username
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
                             color: Colors.white,
-                            letterSpacing: 3,
+                          ),
+                          child: Center(
+                            child: Text(
+                              _username.isNotEmpty
+                                  ? _username[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2EAD65),
+                              ),
+                            ),
                           ),
                         ),
-                        Text(
-                          _greetingText(),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.white70,
-                          ),
+                        const SizedBox(width: 14),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_greetingText()},',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.85),
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                            Text(
+                              _username, // ✅ Nama user dari session
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.white,
-                        size: 22,
-                      ),
+                    Row(
+                      children: [
+                        _buildHeaderActionButton(
+                          icon: Icons.settings_outlined,
+                          onTap: () {},
+                        ),
+                        const SizedBox(width: 12),
+                        _buildHeaderActionButton(
+                          icon: Icons.notifications_outlined,
+                          hasBadge: true,
+                          onTap: () {},
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
-
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    _buildSummaryChip(Icons.task_alt_outlined, '4 Tugas'),
-                    const SizedBox(width: 10),
-                    _buildSummaryChip(Icons.calendar_today_outlined, '2 Jadwal'),
-                    const SizedBox(width: 10),
-                    _buildSummaryChip(Icons.timer_outlined, '25 menit'),
-                  ],
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: const Text(
+                    'Mulai tugas\nhari ini.',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1.2,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
                 ),
               ),
 
@@ -229,7 +331,6 @@ class _DashboardPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Menu grid
                         const Text(
                           'Menu Utama',
                           style: TextStyle(
@@ -272,7 +373,7 @@ class _DashboardPage extends StatelessWidget {
                               subtitle: 'Pomodoro',
                               color: const Color(0xFFE3F2FD),
                               iconColor: const Color(0xFF2196F3),
-                              pageIndex: 3,
+                              pageIndex: 4,
                             ),
                             _buildMenuCard(
                               context,
@@ -281,14 +382,11 @@ class _DashboardPage extends StatelessWidget {
                               subtitle: 'Statistik',
                               color: const Color(0xFFFCE4EC),
                               iconColor: const Color(0xFFE91E63),
-                              pageIndex: 4,
+                              pageIndex: 5,
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 28),
-
-                        // Tips section
                         const Text(
                           'Tips Hari Ini',
                           style: TextStyle(
@@ -320,34 +418,37 @@ class _DashboardPage extends StatelessWidget {
     );
   }
 
-  String _greetingText() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Selamat Pagi! ☀️';
-    if (hour < 15) return 'Selamat Siang! 🌤️';
-    if (hour < 18) return 'Selamat Sore! 🌥️';
-    return 'Selamat Malam! 🌙';
-  }
-
-  Widget _buildSummaryChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildHeaderActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool hasBadge = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
         children: [
-          Icon(icon, color: Colors.white, size: 14),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
               color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+              shape: BoxShape.circle,
             ),
+            child: Icon(icon, color: const Color(0xFF2EAD65), size: 22),
           ),
+          if (hasBadge)
+            Positioned(
+              right: 2,
+              top: 2,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -399,10 +500,7 @@ class _DashboardPage extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.black45,
-                  ),
+                  style: const TextStyle(fontSize: 11, color: Colors.black45),
                 ),
               ],
             ),
@@ -441,10 +539,7 @@ class _DashboardPage extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             desc,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black45,
-            ),
+            style: const TextStyle(fontSize: 12, color: Colors.black45),
           ),
         ],
       ),

@@ -70,8 +70,7 @@ class _SplashScreenState extends State<SplashScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 3), () {
         if (!mounted) return;
-        // Default '/LoginPage'
-        Navigator.of(context).pushReplacementNamed('/HomePage');
+        Navigator.of(context).pushReplacementNamed('/LoginPage');
       });
     });
   }

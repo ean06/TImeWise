@@ -35,13 +35,23 @@ class _JadwalPageState extends State<JadwalPage> {
     });
   }
 
-  String get _selectedKey =>
-      _selectedDate.toString().substring(0, 10);
+  // ✅ Ambil key tanggal dari item — backend pakai snake_case
+  String _tanggalKey(Map<String, dynamic> item) {
+    final raw = item['tanggal'] ?? '';
+    final s = raw.toString();
+    return s.length >= 10 ? s.substring(0, 10) : s;
+  }
+
+  // ✅ Ambil id jadwal — backend pakai id_jadwal
+  int _idJadwal(Map<String, dynamic> item) {
+    final raw = item['id_jadwal'] ?? item['idJadwal'] ?? 0;
+    return raw is int ? raw : int.tryParse(raw.toString()) ?? 0;
+  }
+
+  String get _selectedKey => _selectedDate.toString().substring(0, 10);
 
   List<Map<String, dynamic>> get _selectedJadwal => _allJadwal
-      .where((j) =>
-          (j['tanggal'] ?? '').toString().substring(0, 10) ==
-          _selectedKey)
+      .where((j) => _tanggalKey(j) == _selectedKey)
       .toList();
 
   Color _priorityColor(String p) {
@@ -56,39 +66,57 @@ class _JadwalPageState extends State<JadwalPage> {
   }
 
   void _showFormDialog({Map<String, dynamic>? existing}) {
-    final namaController =
-        TextEditingController(text: existing?['namaJadwal'] ?? '');
+    // ✅ Baca field dengan snake_case dari backend
+    final namaController = TextEditingController(
+        text: existing?['nama_jadwal'] ?? existing?['namaJadwal'] ?? '');
+
+    final rawWaktu =
+        (existing?['waktu'] ?? '').toString();
     final waktuController = TextEditingController(
-        text: existing != null
-            ? (existing['waktu'] ?? '').toString().substring(0, 5)
-            : '');
+        text: rawWaktu.length >= 5 ? rawWaktu.substring(0, 5) : rawWaktu);
+
+    final rawDeadline =
+        (existing?['deadline'] ?? '').toString();
     final deadlineController = TextEditingController(
-        text: existing != null
-            ? (existing['deadline'] ?? '').toString().substring(0, 10)
-            : '');
+        text: rawDeadline.length >= 10
+            ? rawDeadline.substring(0, 10)
+            : rawDeadline);
+
     String selectedPrioritas = existing?['prioritas'] ?? 'Sedang';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => StatefulBuilder(
         builder: (context, setModal) => Padding(
           padding: EdgeInsets.fromLTRB(
-              24, 24, 24,
-              MediaQuery.of(context).viewInsets.bottom + 24),
+              24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 existing != null ? 'Edit Jadwal' : 'Tambah Jadwal',
                 style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w700),
+                    fontSize: 18, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               _buildInput(
                   controller: namaController,
                   hint: 'Nama Kegiatan',
@@ -97,64 +125,76 @@ class _JadwalPageState extends State<JadwalPage> {
               _buildInput(
                   controller: waktuController,
                   hint: 'Waktu (cth: 09:00)',
-                  icon: Icons.access_time),
+                  icon: Icons.access_time,
+                  keyboardType: TextInputType.datetime),
               const SizedBox(height: 10),
               _buildInput(
                   controller: deadlineController,
                   hint: 'Deadline (cth: 2025-12-31)',
-                  icon: Icons.flag_outlined),
-              const SizedBox(height: 12),
+                  icon: Icons.flag_outlined,
+                  keyboardType: TextInputType.datetime),
+              const SizedBox(height: 14),
               const Text('Prioritas',
                   style: TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
                 children: ['Tinggi', 'Sedang', 'Rendah'].map((p) {
                   final isSelected = selectedPrioritas == p;
                   final color = _priorityColor(p);
                   return GestureDetector(
-                    onTap: () =>
-                        setModal(() => selectedPrioritas = p),
-                    child: Container(
+                    onTap: () => setModal(() => selectedPrioritas = p),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                          horizontal: 18, vertical: 9),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? color.withOpacity(0.15)
+                            ? color.withOpacity(0.12)
                             : const Color(0xFFF0F2F5),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: isSelected
-                                ? color
-                                : Colors.transparent),
+                            color: isSelected ? color : Colors.transparent,
+                            width: 1.5),
                       ),
                       child: Text(p,
                           style: TextStyle(
                               fontSize: 13,
                               color: isSelected ? color : Colors.grey,
-                              fontWeight: FontWeight.w500)),
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500)),
                     ),
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 48,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: () async {
-                    if (namaController.text.isEmpty) return;
+                    if (namaController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Nama kegiatan tidak boleh kosong'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
 
                     final waktu = waktuController.text.isEmpty
                         ? '00:00:00'
-                        : '${waktuController.text}:00';
+                        : '${waktuController.text.trim()}:00';
                     final deadline = deadlineController.text.isEmpty
                         ? _selectedKey
-                        : deadlineController.text;
+                        : deadlineController.text.trim();
 
+                    // ✅ Kirim body dengan camelCase ke backend (request body)
                     final body = {
-                      'namaJadwal': namaController.text,
+                      'namaJadwal': namaController.text.trim(),
                       'tanggal': _selectedKey,
                       'waktu': waktu,
                       'prioritas': selectedPrioritas,
@@ -162,24 +202,61 @@ class _JadwalPageState extends State<JadwalPage> {
                       'idAkun': _idAkun,
                     };
 
-                    bool success;
                     if (existing != null) {
-                      success = await ApiService.updateJadwal(
-                          existing['idJadwal'], body);
-                    } else {
-                      success = await ApiService.tambahJadwal(body);
-                    }
+                      // ── UPDATE ──
+                      final success = await ApiService.updateJadwal(
+                          _idJadwal(existing), body);
 
-                    if (success && mounted) {
-                      Navigator.pop(context);
-                      _fetchJadwal();
-                    } else if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Gagal menyimpan jadwal'),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
+                      if (!mounted) return;
+                      if (success) {
+                        Navigator.pop(context);
+                        _fetchJadwal();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Jadwal berhasil diperbarui'),
+                            backgroundColor: Color(0xFF2EAD65),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Gagal memperbarui jadwal'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    } else {
+                      // ── TAMBAH ──
+                      final result = await ApiService.tambahJadwal(body);
+
+                      if (!mounted) return;
+                      if (result['status'] == 'success') {
+                        Navigator.pop(context);
+                        _fetchJadwal();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Jadwal berhasil ditambahkan'),
+                            backgroundColor: Color(0xFF2EAD65),
+                          ),
+                        );
+                      } else if (result['status'] == 'conflict') {
+                        // ✅ Handle conflict dari backend
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(result['message'] ??
+                                'Jadwal bertabrakan dengan jadwal lain'),
+                            backgroundColor: Colors.orange,
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Gagal menyimpan jadwal'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -188,10 +265,11 @@ class _JadwalPageState extends State<JadwalPage> {
                         borderRadius: BorderRadius.circular(30)),
                     elevation: 0,
                   ),
-                  child: const Text('Simpan',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600)),
+                  child: Text(
+                    existing != null ? 'Simpan Perubahan' : 'Tambah Jadwal',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],
@@ -205,8 +283,8 @@ class _JadwalPageState extends State<JadwalPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hapus Jadwal'),
         content: const Text('Yakin ingin menghapus jadwal ini?'),
         actions: [
@@ -224,6 +302,14 @@ class _JadwalPageState extends State<JadwalPage> {
       final success = await ApiService.deleteJadwal(idJadwal);
       if (success) {
         _fetchJadwal();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Jadwal dihapus'),
+              backgroundColor: Color(0xFF2EAD65),
+            ),
+          );
+        }
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -251,7 +337,7 @@ class _JadwalPageState extends State<JadwalPage> {
         child: SafeArea(
           child: Column(
             children: [
-              // Header
+              // ── Header ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                 child: Row(
@@ -288,33 +374,28 @@ class _JadwalPageState extends State<JadwalPage> {
 
               const SizedBox(height: 16),
 
-              // Kalender horizontal
+              // ── Kalender horizontal ──
               SizedBox(
                 height: 80,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: 30,
                   itemBuilder: (_, i) {
-                    final date = DateTime.now()
-                        .subtract(Duration(days: 10 - i));
-                    final dateKey =
-                        date.toString().substring(0, 10);
+                    final date =
+                        DateTime.now().subtract(Duration(days: 10 - i));
+                    final dateKey = date.toString().substring(0, 10);
                     final isSelected = dateKey == _selectedKey;
-                    final hasEvent = _allJadwal.any((j) =>
-                        (j['tanggal'] ?? '')
-                            .toString()
-                            .substring(0, 10) ==
-                        dateKey);
+                    final hasEvent = _allJadwal
+                        .any((j) => _tanggalKey(j) == dateKey);
 
                     return GestureDetector(
                       onTap: () =>
                           setState(() => _selectedDate = date),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 4),
+                        margin:
+                            const EdgeInsets.symmetric(horizontal: 4),
                         width: 52,
                         decoration: BoxDecoration(
                           color: isSelected
@@ -323,8 +404,7 @@ class _JadwalPageState extends State<JadwalPage> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Column(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               days[date.weekday % 7],
@@ -349,8 +429,7 @@ class _JadwalPageState extends State<JadwalPage> {
                               Container(
                                 width: 6,
                                 height: 6,
-                                margin:
-                                    const EdgeInsets.only(top: 2),
+                                margin: const EdgeInsets.only(top: 2),
                                 decoration: BoxDecoration(
                                   color: isSelected
                                       ? const Color(0xFF2EAD65)
@@ -368,12 +447,11 @@ class _JadwalPageState extends State<JadwalPage> {
 
               const SizedBox(height: 24),
 
-              // List jadwal
+              // ── List Jadwal ──
               Expanded(
                 child: Container(
                   width: double.infinity,
-                  padding:
-                      const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
@@ -393,11 +471,9 @@ class _JadwalPageState extends State<JadwalPage> {
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black54)),
-                          Text(
-                              '${_selectedJadwal.length} kegiatan',
+                          Text('${_selectedJadwal.length} kegiatan',
                               style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black38)),
+                                  fontSize: 12, color: Colors.black38)),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -415,57 +491,66 @@ class _JadwalPageState extends State<JadwalPage> {
                                         Icon(
                                             Icons
                                                 .calendar_today_outlined,
-                                            size: 48,
+                                            size: 52,
                                             color: Colors.grey[300]),
                                         const SizedBox(height: 12),
                                         const Text(
                                             'Tidak ada jadwal',
                                             style: TextStyle(
-                                                color:
-                                                    Colors.black38)),
+                                                color: Colors.black38,
+                                                fontSize: 14)),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                            'Tap + untuk menambahkan',
+                                            style: TextStyle(
+                                                color: Colors.black26,
+                                                fontSize: 12)),
                                       ],
                                     ),
                                   )
                                 : ListView.separated(
-                                    itemCount:
-                                        _selectedJadwal.length,
+                                    itemCount: _selectedJadwal.length,
                                     separatorBuilder: (_, __) =>
                                         const SizedBox(height: 12),
                                     itemBuilder: (_, i) {
-                                      final item =
-                                          _selectedJadwal[i];
+                                      final item = _selectedJadwal[i];
+                                      // ✅ Baca field snake_case dari backend
+                                      final namaJadwal =
+                                          item['nama_jadwal'] ??
+                                              item['namaJadwal'] ??
+                                              '';
                                       final prioritas =
                                           item['prioritas'] ?? '';
                                       final color =
                                           _priorityColor(prioritas);
-                                      final waktu = (item['waktu'] ??
-                                              '')
-                                          .toString();
-                                      final waktuDisplay = waktu
-                                              .length >= 5
-                                          ? waktu.substring(0, 5)
-                                          : waktu;
+                                      final waktu =
+                                          (item['waktu'] ?? '').toString();
+                                      final waktuDisplay =
+                                          waktu.length >= 5
+                                              ? waktu.substring(0, 5)
+                                              : waktu;
+                                      final deadline =
+                                          (item['deadline'] ?? '').toString();
+                                      final idJadwal = _idJadwal(item);
 
                                       return Container(
-                                        padding:
-                                            const EdgeInsets.all(16),
+                                        padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
-                                          color: color
-                                              .withOpacity(0.06),
+                                          color:
+                                              color.withOpacity(0.06),
                                           borderRadius:
-                                              BorderRadius.circular(
-                                                  16),
+                                              BorderRadius.circular(16),
                                           border: Border.all(
                                               color: color
                                                   .withOpacity(0.2)),
                                         ),
                                         child: Row(
                                           children: [
+                                            // Indikator prioritas
                                             Container(
                                               width: 4,
                                               height: 52,
-                                              decoration:
-                                                  BoxDecoration(
+                                              decoration: BoxDecoration(
                                                 color: color,
                                                 borderRadius:
                                                     BorderRadius
@@ -480,8 +565,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                                         .start,
                                                 children: [
                                                   Text(
-                                                    item['namaJadwal'] ??
-                                                        '',
+                                                    namaJadwal,
                                                     style: const TextStyle(
                                                         fontWeight:
                                                             FontWeight
@@ -500,8 +584,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                                               .black38),
                                                       const SizedBox(
                                                           width: 4),
-                                                      Text(
-                                                          waktuDisplay,
+                                                      Text(waktuDisplay,
                                                           style: const TextStyle(
                                                               fontSize:
                                                                   12,
@@ -540,9 +623,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                                       ),
                                                     ],
                                                   ),
-                                                  if ((item['deadline'] ??
-                                                          '')
-                                                      .toString()
+                                                  if (deadline
                                                       .isNotEmpty)
                                                     Padding(
                                                       padding:
@@ -554,15 +635,13 @@ class _JadwalPageState extends State<JadwalPage> {
                                                           const Icon(
                                                               Icons
                                                                   .flag_outlined,
-                                                              size:
-                                                                  12,
+                                                              size: 12,
                                                               color: Colors
                                                                   .black38),
                                                           const SizedBox(
-                                                              width:
-                                                                  4),
+                                                              width: 4),
                                                           Text(
-                                                            'Deadline: ${(item['deadline'] ?? '').toString().substring(0, 10)}',
+                                                            'Deadline: ${deadline.length >= 10 ? deadline.substring(0, 10) : deadline}',
                                                             style: const TextStyle(
                                                                 fontSize:
                                                                     11,
@@ -575,6 +654,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                                 ],
                                               ),
                                             ),
+                                            // Tombol aksi
                                             Column(
                                               children: [
                                                 IconButton(
@@ -592,7 +672,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                                 IconButton(
                                                   onPressed: () =>
                                                       _deleteJadwal(
-                                                          item['idJadwal']),
+                                                          idJadwal),
                                                   icon: const Icon(
                                                       Icons
                                                           .delete_outline,
@@ -628,6 +708,7 @@ class _JadwalPageState extends State<JadwalPage> {
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    TextInputType? keyboardType,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -637,14 +718,14 @@ class _JadwalPageState extends State<JadwalPage> {
       ),
       child: TextField(
         controller: controller,
+        keyboardType: keyboardType,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle:
-              TextStyle(color: Colors.grey[400], fontSize: 14),
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
           prefixIcon: Icon(icon, color: Colors.grey[400], size: 18),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20, vertical: 14),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
       ),
     );
