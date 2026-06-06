@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:time_wise/services/session_service.dart';
+import 'package:time_wise/services/api_service.dart';
 import 'jadwal_page.dart';
 import 'tugas_page.dart';
 import 'timer_page.dart';
@@ -19,10 +20,10 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = const [
     DashboardPage(),
     JadwalPage(),
-    TugasPage(),
+    LaporanPage(),
     ProfilePage(),
     TimerPage(),
-    LaporanPage(),
+    TugasPage(),
   ];
 
   @override
@@ -30,7 +31,10 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
-        child: _pages[_currentIndex],
+        child: KeyedSubtree(
+          key: ValueKey(_currentIndex),
+          child: _pages[_currentIndex],
+        ),
       ),
       bottomNavigationBar: _BottomNavBar(
         currentIndex: _currentIndex,
@@ -77,38 +81,10 @@ class _BottomNavBar extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _NavItem(
-                  index: 0,
-                  currentIndex: currentIndex,
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home_rounded,
-                  label: 'Home',
-                  onTap: onTap,
-                ),
-                _NavItem(
-                  index: 1,
-                  currentIndex: currentIndex,
-                  icon: Icons.calendar_month_outlined,
-                  activeIcon: Icons.calendar_month,
-                  label: 'Jadwal',
-                  onTap: onTap,
-                ),
-                _NavItem(
-                  index: 2,
-                  currentIndex: currentIndex,
-                  icon: Icons.check_box_outlined,
-                  activeIcon: Icons.check_box,
-                  label: 'Tugas',
-                  onTap: onTap,
-                ),
-                _NavItem(
-                  index: 3,
-                  currentIndex: currentIndex,
-                  icon: Icons.person_outline,
-                  activeIcon: Icons.person,
-                  label: 'Profile',
-                  onTap: onTap,
-                ),
+                _NavItem(index: 0, currentIndex: currentIndex, icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', onTap: onTap),
+                _NavItem(index: 1, currentIndex: currentIndex, icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: 'Jadwal', onTap: onTap),
+                _NavItem(index: 2, currentIndex: currentIndex, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Laporan', onTap: onTap),
+                _NavItem(index: 3, currentIndex: currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', onTap: onTap),
               ],
             ),
           ),
@@ -138,7 +114,6 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = currentIndex == index;
-
     return Expanded(
       child: GestureDetector(
         onTap: () => onTap(index),
@@ -188,18 +163,51 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   String _username = 'Pengguna';
+  int _idAkun = 0;
+  List<Map<String, dynamic>> _jadwalHariIni = [];
+  bool _isLoadingJadwal = false;
 
   @override
-  void initState() {           // ✅ FIXED: nama method benar
-    super.initState();         // ✅ FIXED: dipanggil di tempat yang benar
-    _loadUserData();
+  void initState() {
+    super.initState();
+    _loadData();
   }
 
-  Future<void> _loadUserData() async {
+  Future<void> _loadData() async {
     final username = await SessionService.getUsername();
-    if (mounted) {             // ✅ Cek mounted sebelum setState
+    final idAkun = await SessionService.getIdAkun();
+    if (mounted) {
       setState(() {
         _username = username;
+        _idAkun = idAkun;
+      });
+    }
+    await _fetchJadwalHariIni(idAkun);
+  }
+
+  Future<void> _fetchJadwalHariIni(int idAkun) async {
+    if (idAkun == 0) return;
+    setState(() => _isLoadingJadwal = true);
+
+    final semua = await ApiService.getJadwal(idAkun);
+    final todayKey = DateTime.now().toString().substring(0, 10);
+
+    final hariIni = semua.where((j) {
+      final tgl = (j['tanggal'] ?? '').toString();
+      return tgl.length >= 10 && tgl.substring(0, 10) == todayKey;
+    }).toList();
+
+    // Urutkan berdasarkan waktu
+    hariIni.sort((a, b) {
+      final wa = (a['waktu'] ?? '00:00').toString();
+      final wb = (b['waktu'] ?? '00:00').toString();
+      return wa.compareTo(wb);
+    });
+
+    if (mounted) {
+      setState(() {
+        _jadwalHariIni = hariIni;
+        _isLoadingJadwal = false;
       });
     }
   }
@@ -210,6 +218,27 @@ class _DashboardPageState extends State<DashboardPage> {
     if (hour < 15) return 'Selamat Siang!';
     if (hour < 18) return 'Selamat Sore!';
     return 'Selamat Malam!';
+  }
+
+  Color _priorityColor(String p) {
+    switch (p) {
+      case 'Tinggi':
+        return const Color(0xFFE91E63);
+      case 'Sedang':
+        return const Color(0xFFFF9800);
+      default:
+        return const Color(0xFF2EAD65);
+    }
+  }
+
+  String _todayLabel() {
+    const bulan = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    final now = DateTime.now();
+    return '${hari[now.weekday % 7]}, ${now.day} ${bulan[now.month]} ${now.year}';
   }
 
   @override
@@ -226,6 +255,7 @@ class _DashboardPageState extends State<DashboardPage> {
         child: SafeArea(
           child: Column(
             children: [
+              // ── Header ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
                 child: Row(
@@ -233,7 +263,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   children: [
                     Row(
                       children: [
-                        // Avatar inisial username
                         Container(
                           width: 48,
                           height: 48,
@@ -267,7 +296,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               ),
                             ),
                             Text(
-                              _username, // ✅ Nama user dari session
+                              _username,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -288,7 +317,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         const SizedBox(width: 12),
                         _buildHeaderActionButton(
                           icon: Icons.notifications_outlined,
-                          hasBadge: true,
+                          hasBadge: _jadwalHariIni.isNotEmpty,
                           onTap: () {},
                         ),
                       ],
@@ -316,6 +345,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
               const SizedBox(height: 28),
 
+              // ── White card area ──
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -328,9 +358,11 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                   ),
                   child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ── Menu Utama ──
                         const Text(
                           'Menu Utama',
                           style: TextStyle(
@@ -359,34 +391,280 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                             _buildMenuCard(
                               context,
-                              icon: Icons.check_box_outlined,
-                              label: 'Tugas',
-                              subtitle: 'Todo list',
+                              icon: Icons.bar_chart_outlined,
+                              label: 'Laporan',
+                              subtitle: 'Statistik',
                               color: const Color(0xFFFFF3E0),
                               iconColor: const Color(0xFFFF9800),
                               pageIndex: 2,
                             ),
-                            _buildMenuCard(
-                              context,
-                              icon: Icons.timer_outlined,
-                              label: 'Timer',
-                              subtitle: 'Pomodoro',
-                              color: const Color(0xFFE3F2FD),
-                              iconColor: const Color(0xFF2196F3),
-                              pageIndex: 4,
+                            // _buildMenuCard(
+                            //   context,
+                            //   icon: Icons.check_box_outlined,
+                            //   label: 'Tugas',
+                            //   subtitle: 'Todo list',
+                            // color: const Color(0xFFFCE4EC),
+                            // iconColor: const Color(0xFFE91E63),
+                            //   pageIndex: 2,
+                            // ),
+                            // _buildMenuCard(
+                            //   context,
+                            //   icon: Icons.timer_outlined,
+                            //   label: 'Timer',
+                            //   subtitle: 'Pomodoro',
+                            //   color: const Color(0xFFE3F2FD),
+                            //   iconColor: const Color(0xFF2196F3),
+                            //   pageIndex: 4,
+                            // ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // ── Jadwal Hari Ini ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Jadwal Hari Ini',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                              ),
                             ),
-                            _buildMenuCard(
-                              context,
-                              icon: Icons.bar_chart_outlined,
-                              label: 'Laporan',
-                              subtitle: 'Statistik',
-                              color: const Color(0xFFFCE4EC),
-                              iconColor: const Color(0xFFE91E63),
-                              pageIndex: 5,
+                            Row(
+                              children: [
+                                Text(
+                                  _todayLabel(),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.black38,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Tombol refresh jadwal
+                                GestureDetector(
+                                  onTap: () => _fetchJadwalHariIni(_idAkun),
+                                  child: const Icon(
+                                    Icons.refresh,
+                                    size: 16,
+                                    color: Color(0xFF2EAD65),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+
+                        // State: loading
+                        if (_isLoadingJadwal)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF2EAD65),
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                          )
+
+                        // State: kosong
+                        else if (_jadwalHariIni.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 28, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: Colors.grey.withOpacity(0.1)),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(Icons.event_available_outlined,
+                                    size: 40, color: Colors.grey[300]),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Tidak ada jadwal hari ini',
+                                  style: TextStyle(
+                                      color: Colors.black38, fontSize: 13),
+                                ),
+                                const SizedBox(height: 4),
+                                GestureDetector(
+                                  onTap: () {
+                                    final homeState = context
+                                        .findAncestorStateOfType<
+                                            _HomePageState>();
+                                    homeState?.setState(
+                                        () => homeState._currentIndex = 1);
+                                  },
+                                  child: const Text(
+                                    'Tambah jadwal →',
+                                    style: TextStyle(
+                                      color: Color(0xFF2EAD65),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+
+                        // State: ada data
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _jadwalHariIni.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (_, i) {
+                              final item = _jadwalHariIni[i];
+                              final nama = (item['nama_jadwal'] ??
+                                      item['namaJadwal'] ??
+                                      '')
+                                  .toString();
+                              final prioritas =
+                                  (item['prioritas'] ?? '').toString();
+                              final color = _priorityColor(prioritas);
+                              final waktu =
+                                  (item['waktu'] ?? '').toString();
+                              final waktuDisplay = waktu.length >= 5
+                                  ? waktu.substring(0, 5)
+                                  : waktu;
+                              final deadline =
+                                  (item['deadline'] ?? '').toString();
+
+                              return Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          color.withOpacity(0.08),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                  border: Border.all(
+                                      color: color.withOpacity(0.15)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Indikator warna prioritas
+                                    Container(
+                                      width: 4,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        borderRadius:
+                                            BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+
+                                    // Waktu
+                                    Column(
+                                      children: [
+                                        Text(
+                                          waktuDisplay,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                            color: color,
+                                          ),
+                                        ),
+                                        Text(
+                                          'WIB',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: color.withOpacity(0.6),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    Container(
+                                      width: 1,
+                                      height: 36,
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 12),
+                                      color: Colors.grey.withOpacity(0.15),
+                                    ),
+
+                                    // Nama & info
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            nama,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: color
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          6),
+                                                ),
+                                                child: Text(
+                                                  prioritas,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: color,
+                                                    fontWeight:
+                                                        FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (deadline.length >= 10) ...[
+                                                const SizedBox(width: 6),
+                                                Icon(
+                                                    Icons.flag_outlined,
+                                                    size: 11,
+                                                    color: Colors.black38),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  deadline.substring(0, 10),
+                                                  style: const TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.black38),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+
                         const SizedBox(height: 28),
+
+                        // ── Tips ──
                         const Text(
                           'Tips Hari Ini',
                           style: TextStyle(
@@ -405,7 +683,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           '⏱️ Gunakan teknik Pomodoro',
                           'Kerja 25 menit, istirahat 5 menit. Lebih produktif!',
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
                       ],
                     ),
                   ),
@@ -465,7 +743,8 @@ class _DashboardPageState extends State<DashboardPage> {
   }) {
     return GestureDetector(
       onTap: () {
-        final homeState = context.findAncestorStateOfType<_HomePageState>();
+        final homeState =
+            context.findAncestorStateOfType<_HomePageState>();
         homeState?.setState(() => homeState._currentIndex = pageIndex);
       },
       child: Container(
@@ -490,18 +769,14 @@ class _DashboardPageState extends State<DashboardPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 11, color: Colors.black45),
-                ),
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 11, color: Colors.black45)),
               ],
             ),
           ],
@@ -528,19 +803,15 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87)),
           const SizedBox(height: 4),
-          Text(
-            desc,
-            style: const TextStyle(fontSize: 12, color: Colors.black45),
-          ),
+          Text(desc,
+              style:
+                  const TextStyle(fontSize: 12, color: Colors.black45)),
         ],
       ),
     );
