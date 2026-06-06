@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_page.dart';
 import 'screens/register_page.dart';
 import 'screens/home_page.dart'; 
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init();
   runApp(const MyApp());
 }
 

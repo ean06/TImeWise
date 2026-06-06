@@ -11,8 +11,11 @@ public class Notifikasi {
     @Column(name = "id_notifikasi")
     private Integer idNotifikasi;
 
-    @Column(name = "jenis")
-    private String jenis;
+    @Column(name = "status")
+    private Boolean status;
+
+    @Column(name = "reminder")
+    private Integer reminder;
 
     @Column(name = "id_jadwal")
     private Integer idJadwal;
@@ -20,8 +23,11 @@ public class Notifikasi {
     public Integer getIdNotifikasi() { return idNotifikasi; }
     public void setIdNotifikasi(Integer idNotifikasi) { this.idNotifikasi = idNotifikasi; }
 
-    public String getJenis() { return jenis; }
-    public void setJenis(String jenis) { this.jenis = jenis; }
+    public Boolean getStatus() { return status; }
+    public void setStatus(Boolean status) { this.status = status; }
+
+    public Integer getReminder() { return reminder; }
+    public void setReminder(Integer reminder) { this.reminder = reminder; }
 
     public Integer getIdJadwal() { return idJadwal; }
     public void setIdJadwal(Integer idJadwal) { this.idJadwal = idJadwal; }
