@@ -14,11 +14,28 @@ class _JadwalPageState extends State<JadwalPage> {
   List<Map<String, dynamic>> _allJadwal = [];
   bool _isLoading = false;
   int _idAkun = 0;
+  String? _filterPrioritas;
+  final ScrollController _calendarScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      const double itemWidth = 60; // 52 width + 4*2 margin
+      final double offset = 10 * itemWidth;
+      _calendarScrollController.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _calendarScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _init() async {
@@ -35,14 +52,12 @@ class _JadwalPageState extends State<JadwalPage> {
     });
   }
 
-  // ✅ Ambil key tanggal dari item — backend pakai snake_case
   String _tanggalKey(Map<String, dynamic> item) {
     final raw = item['tanggal'] ?? '';
     final s = raw.toString();
     return s.length >= 10 ? s.substring(0, 10) : s;
   }
 
-  // ✅ Ambil id jadwal — backend pakai id_jadwal
   int _idJadwal(Map<String, dynamic> item) {
     final raw = item['id_jadwal'] ?? item['idJadwal'] ?? 0;
     return raw is int ? raw : int.tryParse(raw.toString()) ?? 0;
@@ -51,7 +66,9 @@ class _JadwalPageState extends State<JadwalPage> {
   String get _selectedKey => _selectedDate.toString().substring(0, 10);
 
   List<Map<String, dynamic>> get _selectedJadwal => _allJadwal
-      .where((j) => _tanggalKey(j) == _selectedKey)
+      .where((j) =>
+          _tanggalKey(j) == _selectedKey &&
+          (_filterPrioritas == null || j['prioritas'] == _filterPrioritas))
       .toList();
 
   Color _priorityColor(String p) {
@@ -66,17 +83,14 @@ class _JadwalPageState extends State<JadwalPage> {
   }
 
   void _showFormDialog({Map<String, dynamic>? existing}) {
-    // ✅ Baca field dengan snake_case dari backend
     final namaController = TextEditingController(
         text: existing?['nama_jadwal'] ?? existing?['namaJadwal'] ?? '');
 
-    final rawWaktu =
-        (existing?['waktu'] ?? '').toString();
+    final rawWaktu = (existing?['waktu'] ?? '').toString();
     final waktuController = TextEditingController(
         text: rawWaktu.length >= 5 ? rawWaktu.substring(0, 5) : rawWaktu);
 
-    final rawDeadline =
-        (existing?['deadline'] ?? '').toString();
+    final rawDeadline = (existing?['deadline'] ?? '').toString();
     final deadlineController = TextEditingController(
         text: rawDeadline.length >= 10
             ? rawDeadline.substring(0, 10)
@@ -99,7 +113,6 @@ class _JadwalPageState extends State<JadwalPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle bar
               Center(
                 child: Container(
                   width: 40,
@@ -113,8 +126,8 @@ class _JadwalPageState extends State<JadwalPage> {
               const SizedBox(height: 16),
               Text(
                 existing != null ? 'Edit Jadwal' : 'Tambah Jadwal',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 20),
               _buildInput(
@@ -123,20 +136,59 @@ class _JadwalPageState extends State<JadwalPage> {
                   icon: Icons.event_outlined),
               const SizedBox(height: 10),
               _buildInput(
-                  controller: waktuController,
-                  hint: 'Waktu (cth: 09:00)',
-                  icon: Icons.access_time,
-                  keyboardType: TextInputType.datetime),
+                controller: waktuController,
+                hint: 'Waktu (Klik untuk memilih)',
+                icon: Icons.access_time,
+                readOnly: true,
+                onTap: () async {
+                  TimeOfDay? pickedTime = await showTimePicker(
+                    context: context,
+                    initialTime: waktuController.text.isNotEmpty
+                        ? TimeOfDay(
+                            hour: int.parse(
+                                waktuController.text.split(':')[0]),
+                            minute: int.parse(
+                                waktuController.text.split(':')[1]),
+                          )
+                        : TimeOfDay.now(),
+                  );
+                  if (pickedTime != null) {
+                    final String formattedTime =
+                        '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+                    setModal(() {
+                      waktuController.text = formattedTime;
+                    });
+                  }
+                },
+              ),
               const SizedBox(height: 10),
               _buildInput(
-                  controller: deadlineController,
-                  hint: 'Deadline (cth: 2025-12-31)',
-                  icon: Icons.flag_outlined,
-                  keyboardType: TextInputType.datetime),
+                controller: deadlineController,
+                hint: 'Deadline (Klik untuk memilih)',
+                icon: Icons.flag_outlined,
+                readOnly: true,
+                onTap: () async {
+                  DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: deadlineController.text.isNotEmpty
+                        ? DateTime.parse(deadlineController.text)
+                        : DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2101),
+                  );
+                  if (pickedDate != null) {
+                    final String formattedDate =
+                        '${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}';
+                    setModal(() {
+                      deadlineController.text = formattedDate;
+                    });
+                  }
+                },
+              ),
               const SizedBox(height: 14),
               const Text('Prioritas',
-                  style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600)),
+                  style:
+                      TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
               Row(
                 children: ['Tinggi', 'Sedang', 'Rendah'].map((p) {
@@ -178,7 +230,8 @@ class _JadwalPageState extends State<JadwalPage> {
                     if (namaController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Nama kegiatan tidak boleh kosong'),
+                          content:
+                              Text('Nama kegiatan tidak boleh kosong'),
                           backgroundColor: Colors.orange,
                         ),
                       );
@@ -192,7 +245,6 @@ class _JadwalPageState extends State<JadwalPage> {
                         ? _selectedKey
                         : deadlineController.text.trim();
 
-                    // ✅ Kirim body dengan camelCase ke backend (request body)
                     final body = {
                       'namaJadwal': namaController.text.trim(),
                       'tanggal': _selectedKey,
@@ -203,7 +255,6 @@ class _JadwalPageState extends State<JadwalPage> {
                     };
 
                     if (existing != null) {
-                      // ── UPDATE ──
                       final success = await ApiService.updateJadwal(
                           _idJadwal(existing), body);
 
@@ -226,7 +277,6 @@ class _JadwalPageState extends State<JadwalPage> {
                         );
                       }
                     } else {
-                      // ── TAMBAH ──
                       final result = await ApiService.tambahJadwal(body);
 
                       if (!mounted) return;
@@ -240,7 +290,6 @@ class _JadwalPageState extends State<JadwalPage> {
                           ),
                         );
                       } else if (result['status'] == 'conflict') {
-                        // ✅ Handle conflict dari backend
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(result['message'] ??
@@ -378,6 +427,7 @@ class _JadwalPageState extends State<JadwalPage> {
               SizedBox(
                 height: 80,
                 child: ListView.builder(
+                  controller: _calendarScrollController,
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: 30,
@@ -386,8 +436,8 @@ class _JadwalPageState extends State<JadwalPage> {
                         DateTime.now().subtract(Duration(days: 10 - i));
                     final dateKey = date.toString().substring(0, 10);
                     final isSelected = dateKey == _selectedKey;
-                    final hasEvent = _allJadwal
-                        .any((j) => _tanggalKey(j) == dateKey);
+                    final hasEvent =
+                        _allJadwal.any((j) => _tanggalKey(j) == dateKey);
 
                     return GestureDetector(
                       onTap: () =>
@@ -476,7 +526,61 @@ class _JadwalPageState extends State<JadwalPage> {
                                   fontSize: 12, color: Colors.black38)),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+
+                      // ── Filter Prioritas ──
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [null, 'Tinggi', 'Sedang', 'Rendah']
+                              .map((p) {
+                            final isAll = p == null;
+                            final isSelected = _filterPrioritas == p;
+                            final color = isAll
+                                ? const Color(0xFF2EAD65)
+                                : _priorityColor(p!);
+                            return GestureDetector(
+                              onTap: () =>
+                                  setState(() => _filterPrioritas = p),
+                              child: AnimatedContainer(
+                                duration:
+                                    const Duration(milliseconds: 200),
+                                margin:
+                                    const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? color
+                                      : const Color(0xFFF0F2F5),
+                                  borderRadius:
+                                      BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? color
+                                        : Colors.transparent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Text(
+                                  isAll ? 'Semua' : p!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
                       Expanded(
                         child: _isLoading
                             ? const Center(
@@ -494,8 +598,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                             size: 52,
                                             color: Colors.grey[300]),
                                         const SizedBox(height: 12),
-                                        const Text(
-                                            'Tidak ada jadwal',
+                                        const Text('Tidak ada jadwal',
                                             style: TextStyle(
                                                 color: Colors.black38,
                                                 fontSize: 14)),
@@ -514,7 +617,6 @@ class _JadwalPageState extends State<JadwalPage> {
                                         const SizedBox(height: 12),
                                     itemBuilder: (_, i) {
                                       final item = _selectedJadwal[i];
-                                      // ✅ Baca field snake_case dari backend
                                       final namaJadwal =
                                           item['nama_jadwal'] ??
                                               item['namaJadwal'] ??
@@ -530,11 +632,13 @@ class _JadwalPageState extends State<JadwalPage> {
                                               ? waktu.substring(0, 5)
                                               : waktu;
                                       final deadline =
-                                          (item['deadline'] ?? '').toString();
+                                          (item['deadline'] ?? '')
+                                              .toString();
                                       final idJadwal = _idJadwal(item);
 
                                       return Container(
-                                        padding: const EdgeInsets.all(16),
+                                        padding:
+                                            const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
                                           color:
                                               color.withOpacity(0.06),
@@ -546,7 +650,6 @@ class _JadwalPageState extends State<JadwalPage> {
                                         ),
                                         child: Row(
                                           children: [
-                                            // Indikator prioritas
                                             Container(
                                               width: 4,
                                               height: 52,
@@ -584,7 +687,8 @@ class _JadwalPageState extends State<JadwalPage> {
                                                               .black38),
                                                       const SizedBox(
                                                           width: 4),
-                                                      Text(waktuDisplay,
+                                                      Text(
+                                                          waktuDisplay,
                                                           style: const TextStyle(
                                                               fontSize:
                                                                   12,
@@ -597,8 +701,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                                             .symmetric(
                                                             horizontal:
                                                                 8,
-                                                            vertical:
-                                                                2),
+                                                            vertical: 2),
                                                         decoration:
                                                             BoxDecoration(
                                                           color: color
@@ -614,8 +717,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                                           style: TextStyle(
                                                               fontSize:
                                                                   10,
-                                                              color:
-                                                                  color,
+                                                              color: color,
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w500),
@@ -623,8 +725,7 @@ class _JadwalPageState extends State<JadwalPage> {
                                                       ),
                                                     ],
                                                   ),
-                                                  if (deadline
-                                                      .isNotEmpty)
+                                                  if (deadline.isNotEmpty)
                                                     Padding(
                                                       padding:
                                                           const EdgeInsets
@@ -654,28 +755,24 @@ class _JadwalPageState extends State<JadwalPage> {
                                                 ],
                                               ),
                                             ),
-                                            // Tombol aksi
                                             Column(
                                               children: [
                                                 IconButton(
                                                   onPressed: () =>
                                                       _showFormDialog(
-                                                          existing:
-                                                              item),
+                                                          existing: item),
                                                   icon: const Icon(
-                                                      Icons
-                                                          .edit_outlined,
+                                                      Icons.edit_outlined,
                                                       size: 18,
-                                                      color: Colors
-                                                          .black38),
+                                                      color:
+                                                          Colors.black38),
                                                 ),
                                                 IconButton(
                                                   onPressed: () =>
                                                       _deleteJadwal(
                                                           idJadwal),
                                                   icon: const Icon(
-                                                      Icons
-                                                          .delete_outline,
+                                                      Icons.delete_outline,
                                                       size: 18,
                                                       color: Colors
                                                           .redAccent),
@@ -709,6 +806,8 @@ class _JadwalPageState extends State<JadwalPage> {
     required String hint,
     required IconData icon,
     TextInputType? keyboardType,
+    bool readOnly = false,
+    VoidCallback? onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -719,6 +818,8 @@ class _JadwalPageState extends State<JadwalPage> {
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
+        readOnly: readOnly,
+        onTap: onTap,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
