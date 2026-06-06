@@ -18,7 +18,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   void _updatePassword() async {
     if (_formKey.currentState!.validate()) {
-      // Logic ganti password ke server/service di sini
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password berhasil diubah!'), backgroundColor: Color(0xFF2EAD65)),
       );
@@ -85,7 +84,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                    // Mengganti g_lock_id_outlined menjadi lock_clock_outlined agar kompatibel di semua versi
                     prefixIcon: const Icon(Icons.lock_clock_outlined), 
                     suffixIcon: IconButton(
                       icon: Icon(_obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined),

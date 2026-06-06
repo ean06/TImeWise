@@ -48,7 +48,6 @@ class _LoginPageState extends State<LoginPage>
   }
 
   void handleLogin() async {
-    // Validasi input kosong
     if (usernameController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
       setState(() {
@@ -63,7 +62,6 @@ class _LoginPageState extends State<LoginPage>
       message = "";
     });
 
-    // ✅ result sekarang selalu Map<String, dynamic>
     final result = await ApiService.login(
       usernameController.text.trim(),
       passwordController.text,
@@ -72,13 +70,11 @@ class _LoginPageState extends State<LoginPage>
     if (!mounted) return;
 
     if (result['status'] == 'success') {
-      // ✅ Ambil idAkun — handle jika server kirim int atau String
       final rawId = result['idAkun'] ?? result['id_akun'] ?? 0;
       final int idAkun = rawId is int
           ? rawId
           : int.tryParse(rawId.toString()) ?? 0;
 
-      // ✅ Simpan session dengan username dari response server
       await SessionService.saveSession(
         idAkun: idAkun,
         username: result['username']?.toString() ?? usernameController.text.trim(),
@@ -93,7 +89,6 @@ class _LoginPageState extends State<LoginPage>
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/HomePage');
     } else {
-      // ✅ Tampilkan pesan error dari server jika ada
       setState(() {
         message = result['message']?.toString() ?? "Username atau password salah";
         _isSuccess = false;
@@ -279,7 +274,6 @@ class _LoginPageState extends State<LoginPage>
                           width: double.infinity,
                           height: 52,
                           child: ElevatedButton(
-                            // ✅ Disable tombol saat loading
                             onPressed: _isLoading ? null : handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF3DBE7A),

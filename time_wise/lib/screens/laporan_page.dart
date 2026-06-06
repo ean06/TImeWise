@@ -195,7 +195,7 @@ class _LaporanPageState extends State<LaporanPage> {
 
               const SizedBox(height: 20),
 
-              // ── Summary Cards ──
+              // ── Rangkuman Cards ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
@@ -237,7 +237,6 @@ class _LaporanPageState extends State<LaporanPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Tab ──
                       Container(
                         height: 44,
                         decoration: BoxDecoration(
@@ -477,7 +476,6 @@ class _LaporanPageState extends State<LaporanPage> {
           ),
           const SizedBox(height: 4),
 
-          // Bar dengan ripple effect jika tappable
           AnimatedContainer(
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeOutCubic,

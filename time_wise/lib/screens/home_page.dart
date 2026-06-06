@@ -197,7 +197,6 @@ class _DashboardPageState extends State<DashboardPage> {
       return tgl.length >= 10 && tgl.substring(0, 10) == todayKey;
     }).toList();
 
-    // Urutkan berdasarkan waktu
     hariIni.sort((a, b) {
       final wa = (a['waktu'] ?? '00:00').toString();
       final wb = (b['waktu'] ?? '00:00').toString();
@@ -470,7 +469,6 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                           )
 
-                        // State: kosong
                         else if (_jadwalHariIni.isEmpty)
                           Container(
                             width: double.infinity,
@@ -557,7 +555,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                                 child: Row(
                                   children: [
-                                    // Indikator warna prioritas
                                     Container(
                                       width: 4,
                                       height: 48,
@@ -598,7 +595,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                       color: Colors.grey.withOpacity(0.15),
                                     ),
 
-                                    // Nama & info
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -664,7 +660,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
                         const SizedBox(height: 28),
 
-                        // ── Tips ──
                         const Text(
                           'Tips Hari Ini',
                           style: TextStyle(

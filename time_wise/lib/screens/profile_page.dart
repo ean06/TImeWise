@@ -119,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20), // Disesuaikan agar padding merata
+                  padding: const EdgeInsets.all(20), 
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(28),
@@ -131,9 +131,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ],
                   ),
-                  child: Row( // Diubah dari Column ke Row karena hanya berisi info Avatar & Nama saja
+                  child: Row( 
                     children: [
-                      // Avatar
                       Container(
                         width: 72,
                         height: 72,
@@ -164,7 +163,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      // Nama & username
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
