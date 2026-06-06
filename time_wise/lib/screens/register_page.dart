@@ -160,7 +160,6 @@ class _RegisterPageState extends State<RegisterPage>
                           ),
                           child: Row(
                             children: [
-                              // Login — inactive
                               Expanded(
                                 child: GestureDetector(
                                   onTap: _goToLogin,
@@ -176,7 +175,6 @@ class _RegisterPageState extends State<RegisterPage>
                                   ),
                                 ),
                               ),
-                              // Register — active pill
                               Expanded(
                                 child: Container(
                                   height: 44,
@@ -242,17 +240,6 @@ class _RegisterPageState extends State<RegisterPage>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // GestureDetector(
-                            //   onTap: _goToLogin,
-                            //   child: const Text(
-                            //     "Sudah Memiliki Account",
-                            //     style: TextStyle(
-                            //       fontSize: 12,
-                            //       color: Colors.black54,
-                            //       decoration: TextDecoration.underline,
-                            //     ),
-                            //   ),
-                            // ),
                             GestureDetector(
                               onTap: () {},
                               child: const Text(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:time_wise/services/session_service.dart';
+import 'package:time_wise/services/api_service.dart';
 import 'jadwal_page.dart';
 import 'tugas_page.dart';
 import 'timer_page.dart';
@@ -16,12 +18,12 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    _DashboardPage(),
+    DashboardPage(),
     JadwalPage(),
-    TugasPage(),
-    TimerPage(),
     LaporanPage(),
     ProfilePage(),
+    TimerPage(),
+    TugasPage(),
   ];
 
   @override
@@ -29,7 +31,10 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
-        child: _pages[_currentIndex],
+        child: KeyedSubtree(
+          key: ValueKey(_currentIndex),
+          child: _pages[_currentIndex],
+        ),
       ),
       bottomNavigationBar: _BottomNavBar(
         currentIndex: _currentIndex,
@@ -45,34 +50,43 @@ class _BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  const _BottomNavBar({
-    required this.currentIndex,
-    required this.onTap,
-  });
+  const _BottomNavBar({required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+      color: Colors.transparent,
+      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24, top: 10),
+      child: Container(
+        height: 65,
+        decoration: BoxDecoration(
+          color: const Color(0xFF2EAD65).withOpacity(0.2),
+          borderRadius: BorderRadius.circular(35),
+          border: Border.all(
+            color: const Color(0xFF2EAD65).withOpacity(0.3),
+            width: 1,
           ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(index: 0, currentIndex: currentIndex, icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', onTap: onTap),
-              _NavItem(index: 2, currentIndex: currentIndex, icon: Icons.check_box_outlined, activeIcon: Icons.check_box, label: 'Tugas', onTap: onTap),
-              _NavItem(index: 5, currentIndex: currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', onTap: onTap),
-            ],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2EAD65).withOpacity(0.15),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(35),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NavItem(index: 0, currentIndex: currentIndex, icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', onTap: onTap),
+                _NavItem(index: 1, currentIndex: currentIndex, icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: 'Jadwal', onTap: onTap),
+                _NavItem(index: 2, currentIndex: currentIndex, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Laporan', onTap: onTap),
+                _NavItem(index: 3, currentIndex: currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', onTap: onTap),
+              ],
+            ),
           ),
         ),
       ),
@@ -100,36 +114,38 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = currentIndex == index;
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive
-              ? const Color(0xFF2EAD65).withOpacity(0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? const Color(0xFF2EAD65) : Colors.grey,
-              size: 22,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight:
-                    isActive ? FontWeight.w600 : FontWeight.normal,
-                color: isActive ? const Color(0xFF2EAD65) : Colors.grey,
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(index),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFF2EAD65) : Colors.transparent,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isActive ? activeIcon : icon,
+                color: isActive ? Colors.white : const Color(0xFF2EAD65),
+                size: 22,
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? Colors.white : const Color(0xFF2EAD65),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -138,8 +154,91 @@ class _NavItem extends StatelessWidget {
 
 // ── Dashboard Page ─────────────────────────────────────────────────────────────
 
-class _DashboardPage extends StatelessWidget {
-  const _DashboardPage();
+class DashboardPage extends StatefulWidget {
+  const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  String _username = 'Pengguna';
+  int _idAkun = 0;
+  List<Map<String, dynamic>> _jadwalHariIni = [];
+  bool _isLoadingJadwal = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final username = await SessionService.getUsername();
+    final idAkun = await SessionService.getIdAkun();
+    if (mounted) {
+      setState(() {
+        _username = username;
+        _idAkun = idAkun;
+      });
+    }
+    await _fetchJadwalHariIni(idAkun);
+  }
+
+  Future<void> _fetchJadwalHariIni(int idAkun) async {
+    if (idAkun == 0) return;
+    setState(() => _isLoadingJadwal = true);
+
+    final semua = await ApiService.getJadwal(idAkun);
+    final todayKey = DateTime.now().toString().substring(0, 10);
+
+    final hariIni = semua.where((j) {
+      final tgl = (j['tanggal'] ?? '').toString();
+      return tgl.length >= 10 && tgl.substring(0, 10) == todayKey;
+    }).toList();
+
+    hariIni.sort((a, b) {
+      final wa = (a['waktu'] ?? '00:00').toString();
+      final wb = (b['waktu'] ?? '00:00').toString();
+      return wa.compareTo(wb);
+    });
+
+    if (mounted) {
+      setState(() {
+        _jadwalHariIni = hariIni;
+        _isLoadingJadwal = false;
+      });
+    }
+  }
+
+  String _greetingText() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Selamat Pagi!';
+    if (hour < 15) return 'Selamat Siang!';
+    if (hour < 18) return 'Selamat Sore!';
+    return 'Selamat Malam!';
+  }
+
+  Color _priorityColor(String p) {
+    switch (p) {
+      case 'Tinggi':
+        return const Color(0xFFE91E63);
+      case 'Sedang':
+        return const Color(0xFFFF9800);
+      default:
+        return const Color(0xFF2EAD65);
+    }
+  }
+
+  String _todayLabel() {
+    const bulan = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    final now = DateTime.now();
+    return '${hari[now.weekday % 7]}, ${now.day} ${bulan[now.month]} ${now.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,70 +254,97 @@ class _DashboardPage extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // ── Header ──────────────────────────────────────
+              // ── Header ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
                       children: [
-                        const Text(
-                          'TIMEWISE',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
                             color: Colors.white,
-                            letterSpacing: 3,
+                          ),
+                          child: Center(
+                            child: Text(
+                              _username.isNotEmpty
+                                  ? _username[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2EAD65),
+                              ),
+                            ),
                           ),
                         ),
-                        Text(
-                          _greetingText(),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.white70,
-                          ),
+                        const SizedBox(width: 14),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_greetingText()},',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.85),
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                            Text(
+                              _username,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.white,
-                        size: 22,
-                      ),
+                    Row(
+                      children: [
+                        _buildHeaderActionButton(
+                          icon: Icons.settings_outlined,
+                          onTap: () {},
+                        ),
+                        const SizedBox(width: 12),
+                        _buildHeaderActionButton(
+                          icon: Icons.notifications_outlined,
+                          hasBadge: _jadwalHariIni.isNotEmpty,
+                          onTap: () {},
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
-
-              // ── Summary strip ────────────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    _buildSummaryChip(Icons.task_alt_outlined, '4 Tugas'),
-                    const SizedBox(width: 10),
-                    _buildSummaryChip(Icons.calendar_today_outlined, '2 Jadwal'),
-                    const SizedBox(width: 10),
-                    _buildSummaryChip(Icons.timer_outlined, '25 menit'),
-                  ],
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: const Text(
+                    'Mulai tugas\nhari ini.',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1.2,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
                 ),
               ),
 
               const SizedBox(height: 28),
 
-              // ── White card ───────────────────────────────────
+              // ── White card area ──
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -231,10 +357,11 @@ class _DashboardPage extends StatelessWidget {
                     ),
                   ),
                   child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Menu grid
+                        // ── Menu Utama ──
                         const Text(
                           'Menu Utama',
                           style: TextStyle(
@@ -263,37 +390,276 @@ class _DashboardPage extends StatelessWidget {
                             ),
                             _buildMenuCard(
                               context,
-                              icon: Icons.check_box_outlined,
-                              label: 'Tugas',
-                              subtitle: 'Todo list',
+                              icon: Icons.bar_chart_outlined,
+                              label: 'Laporan',
+                              subtitle: 'Statistik',
                               color: const Color(0xFFFFF3E0),
                               iconColor: const Color(0xFFFF9800),
                               pageIndex: 2,
                             ),
-                            _buildMenuCard(
-                              context,
-                              icon: Icons.timer_outlined,
-                              label: 'Timer',
-                              subtitle: 'Pomodoro',
-                              color: const Color(0xFFE3F2FD),
-                              iconColor: const Color(0xFF2196F3),
-                              pageIndex: 3,
-                            ),
-                            _buildMenuCard(
-                              context,
-                              icon: Icons.bar_chart_outlined,
-                              label: 'Laporan',
-                              subtitle: 'Statistik',
-                              color: const Color(0xFFFCE4EC),
-                              iconColor: const Color(0xFFE91E63),
-                              pageIndex: 4,
-                            ),
+                            // _buildMenuCard(
+                            //   context,
+                            //   icon: Icons.check_box_outlined,
+                            //   label: 'Tugas',
+                            //   subtitle: 'Todo list',
+                            // color: const Color(0xFFFCE4EC),
+                            // iconColor: const Color(0xFFE91E63),
+                            //   pageIndex: 2,
+                            // ),
+                            // _buildMenuCard(
+                            //   context,
+                            //   icon: Icons.timer_outlined,
+                            //   label: 'Timer',
+                            //   subtitle: 'Pomodoro',
+                            //   color: const Color(0xFFE3F2FD),
+                            //   iconColor: const Color(0xFF2196F3),
+                            //   pageIndex: 4,
+                            // ),
                           ],
                         ),
 
                         const SizedBox(height: 28),
 
-                        // Tips section
+                        // ── Jadwal Hari Ini ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Jadwal Hari Ini',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  _todayLabel(),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.black38,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Tombol refresh jadwal
+                                GestureDetector(
+                                  onTap: () => _fetchJadwalHariIni(_idAkun),
+                                  child: const Icon(
+                                    Icons.refresh,
+                                    size: 16,
+                                    color: Color(0xFF2EAD65),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // State: loading
+                        if (_isLoadingJadwal)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF2EAD65),
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                          )
+
+                        else if (_jadwalHariIni.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 28, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: Colors.grey.withOpacity(0.1)),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(Icons.event_available_outlined,
+                                    size: 40, color: Colors.grey[300]),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Tidak ada jadwal hari ini',
+                                  style: TextStyle(
+                                      color: Colors.black38, fontSize: 13),
+                                ),
+                                const SizedBox(height: 4),
+                                GestureDetector(
+                                  onTap: () {
+                                    final homeState = context
+                                        .findAncestorStateOfType<
+                                            _HomePageState>();
+                                    homeState?.setState(
+                                        () => homeState._currentIndex = 1);
+                                  },
+                                  child: const Text(
+                                    'Tambah jadwal →',
+                                    style: TextStyle(
+                                      color: Color(0xFF2EAD65),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+
+                        // State: ada data
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _jadwalHariIni.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (_, i) {
+                              final item = _jadwalHariIni[i];
+                              final nama = (item['nama_jadwal'] ??
+                                      item['namaJadwal'] ??
+                                      '')
+                                  .toString();
+                              final prioritas =
+                                  (item['prioritas'] ?? '').toString();
+                              final color = _priorityColor(prioritas);
+                              final waktu =
+                                  (item['waktu'] ?? '').toString();
+                              final waktuDisplay = waktu.length >= 5
+                                  ? waktu.substring(0, 5)
+                                  : waktu;
+                              final deadline =
+                                  (item['deadline'] ?? '').toString();
+
+                              return Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          color.withOpacity(0.08),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                  border: Border.all(
+                                      color: color.withOpacity(0.15)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 4,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        borderRadius:
+                                            BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+
+                                    // Waktu
+                                    Column(
+                                      children: [
+                                        Text(
+                                          waktuDisplay,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                            color: color,
+                                          ),
+                                        ),
+                                        Text(
+                                          'WIB',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: color.withOpacity(0.6),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    Container(
+                                      width: 1,
+                                      height: 36,
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 12),
+                                      color: Colors.grey.withOpacity(0.15),
+                                    ),
+
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            nama,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: color
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          6),
+                                                ),
+                                                child: Text(
+                                                  prioritas,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: color,
+                                                    fontWeight:
+                                                        FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (deadline.length >= 10) ...[
+                                                const SizedBox(width: 6),
+                                                Icon(
+                                                    Icons.flag_outlined,
+                                                    size: 11,
+                                                    color: Colors.black38),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  deadline.substring(0, 10),
+                                                  style: const TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.black38),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+
+                        const SizedBox(height: 28),
+
                         const Text(
                           'Tips Hari Ini',
                           style: TextStyle(
@@ -312,7 +678,7 @@ class _DashboardPage extends StatelessWidget {
                           '⏱️ Gunakan teknik Pomodoro',
                           'Kerja 25 menit, istirahat 5 menit. Lebih produktif!',
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
                       ],
                     ),
                   ),
@@ -325,34 +691,37 @@ class _DashboardPage extends StatelessWidget {
     );
   }
 
-  String _greetingText() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Selamat Pagi! ☀️';
-    if (hour < 15) return 'Selamat Siang! 🌤️';
-    if (hour < 18) return 'Selamat Sore! 🌥️';
-    return 'Selamat Malam! 🌙';
-  }
-
-  Widget _buildSummaryChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildHeaderActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool hasBadge = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
         children: [
-          Icon(icon, color: Colors.white, size: 14),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
               color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+              shape: BoxShape.circle,
             ),
+            child: Icon(icon, color: const Color(0xFF2EAD65), size: 22),
           ),
+          if (hasBadge)
+            Positioned(
+              right: 2,
+              top: 2,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -369,7 +738,8 @@ class _DashboardPage extends StatelessWidget {
   }) {
     return GestureDetector(
       onTap: () {
-        final homeState = context.findAncestorStateOfType<_HomePageState>();
+        final homeState =
+            context.findAncestorStateOfType<_HomePageState>();
         homeState?.setState(() => homeState._currentIndex = pageIndex);
       },
       child: Container(
@@ -394,21 +764,14 @@ class _DashboardPage extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.black45,
-                  ),
-                ),
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 11, color: Colors.black45)),
               ],
             ),
           ],
@@ -435,22 +798,15 @@ class _DashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87)),
           const SizedBox(height: 4),
-          Text(
-            desc,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black45,
-            ),
-          ),
+          Text(desc,
+              style:
+                  const TextStyle(fontSize: 12, color: Colors.black45)),
         ],
       ),
     );

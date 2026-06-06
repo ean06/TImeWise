@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/session_service.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -15,6 +16,7 @@ class _LoginPageState extends State<LoginPage>
   final passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
   String message = "";
   bool _isSuccess = false;
 
@@ -29,13 +31,11 @@ class _LoginPageState extends State<LoginPage>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
-    _fadeAnim =
-        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _animController.forward();
   }
 
@@ -48,28 +48,60 @@ class _LoginPageState extends State<LoginPage>
   }
 
   void handleLogin() async {
-    String result = await ApiService.login(
-      usernameController.text,
+    if (usernameController.text.trim().isEmpty ||
+        passwordController.text.trim().isEmpty) {
+      setState(() {
+        message = "Username dan password tidak boleh kosong";
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      message = "";
+    });
+
+    final result = await ApiService.login(
+      usernameController.text.trim(),
       passwordController.text,
     );
 
-    setState(() {
-      if (result == "success") {
-        message = "Login Berhasil";
+    if (!mounted) return;
+
+    if (result['status'] == 'success') {
+      final rawId = result['idAkun'] ?? result['id_akun'] ?? 0;
+      final int idAkun = rawId is int
+          ? rawId
+          : int.tryParse(rawId.toString()) ?? 0;
+
+      await SessionService.saveSession(
+        idAkun: idAkun,
+        username: result['username']?.toString() ?? usernameController.text.trim(),
+      );
+
+      setState(() {
+        message = "Login berhasil!";
         _isSuccess = true;
-        Navigator.pushReplacementNamed(context, '/HomePage');
-      } else {
-        message = "Username atau password salah";
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/HomePage');
+    } else {
+      setState(() {
+        message = result['message']?.toString() ?? "Username atau password salah";
         _isSuccess = false;
-      }
-    });
+        _isLoading = false;
+      });
+    }
   }
 
   void _goToRegister() {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => RegisterPage(),
+        pageBuilder: (_, __, ___) => const RegisterPage(),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 300),
@@ -100,6 +132,13 @@ class _LoginPageState extends State<LoginPage>
                     Image.asset(
                       'assets/images/splashscreen.png',
                       width: 250,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.access_time,
+                          size: 100,
+                          color: Colors.white,
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     const Text(
@@ -137,6 +176,7 @@ class _LoginPageState extends State<LoginPage>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Tab Login / Register
                         Container(
                           height: 50,
                           decoration: BoxDecoration(
@@ -154,8 +194,7 @@ class _LoginPageState extends State<LoginPage>
                                     borderRadius: BorderRadius.circular(27),
                                     boxShadow: [
                                       BoxShadow(
-                                        color:
-                                            Colors.black.withOpacity(0.08),
+                                        color: Colors.black.withOpacity(0.08),
                                         blurRadius: 6,
                                         offset: const Offset(0, 2),
                                       ),
@@ -196,7 +235,7 @@ class _LoginPageState extends State<LoginPage>
                         _buildTextField(
                           controller: usernameController,
                           hint: "Username",
-                          prefixIcon: Icons.mail_outline,
+                          prefixIcon: Icons.person_outline,
                         ),
 
                         const SizedBox(height: 12),
@@ -205,26 +244,16 @@ class _LoginPageState extends State<LoginPage>
                           controller: passwordController,
                           hint: "Password",
                           isVisible: _isPasswordVisible,
-                          onToggle: () => setState(() =>
-                              _isPasswordVisible = !_isPasswordVisible),
+                          onToggle: () => setState(
+                            () => _isPasswordVisible = !_isPasswordVisible,
+                          ),
                         ),
 
                         const SizedBox(height: 10),
 
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            // GestureDetector(
-                            //   onTap: _goToRegister,
-                            //   child: const Text(
-                            //     "Belum Memiliki Account",
-                            //     style: TextStyle(
-                            //       fontSize: 12,
-                            //       color: Colors.black54,
-                            //       decoration: TextDecoration.underline,
-                            //     ),
-                            //   ),
-                            // ),
                             GestureDetector(
                               onTap: () {},
                               child: const Text(
@@ -245,22 +274,33 @@ class _LoginPageState extends State<LoginPage>
                           width: double.infinity,
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: handleLogin,
+                            onPressed: _isLoading ? null : handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF3DBE7A),
+                              disabledBackgroundColor:
+                                  const Color(0xFF3DBE7A).withOpacity(0.6),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               elevation: 0,
                             ),
-                            child: const Text(
-                              "Login",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    "Login",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
 
@@ -268,10 +308,10 @@ class _LoginPageState extends State<LoginPage>
                           const SizedBox(height: 10),
                           Text(
                             message,
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: _isSuccess
-                                  ? Colors.green
-                                  : Colors.redAccent,
+                              color:
+                                  _isSuccess ? Colors.green : Colors.redAccent,
                               fontWeight: FontWeight.w500,
                               fontSize: 13,
                             ),
@@ -318,8 +358,10 @@ class _LoginPageState extends State<LoginPage>
           hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
           prefixIcon: Icon(prefixIcon, color: Colors.grey[400], size: 20),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -343,8 +385,11 @@ class _LoginPageState extends State<LoginPage>
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-          prefixIcon:
-              Icon(Icons.lock_outline, color: Colors.grey[400], size: 20),
+          prefixIcon: Icon(
+            Icons.lock_outline,
+            color: Colors.grey[400],
+            size: 20,
+          ),
           suffixIcon: IconButton(
             icon: Icon(
               isVisible
@@ -356,8 +401,10 @@ class _LoginPageState extends State<LoginPage>
             onPressed: onToggle,
           ),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
