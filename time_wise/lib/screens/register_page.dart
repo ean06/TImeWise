@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'login_page.dart';
+import 'home_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -60,16 +60,15 @@ class _RegisterPageState extends State<RegisterPage>
     }
 
     String result = await ApiService.register(
-      usernameController.text,
+      usernameController.text.trim(),
       passwordController.text,
     );
 
     setState(() {
-      if (result == "registered") {
+      if (result == "success" || result == "registered") {
         message = "Register Berhasil";
         _isSuccess = true;
-        Navigator.pushReplacementNamed(context, '/HomePage');
-      } else if (result == "username_taken") {
+      } else if (result == "username_taken" || result == "exists") {
         message = "Username sudah digunakan";
         _isSuccess = false;
       } else {
@@ -77,13 +76,27 @@ class _RegisterPageState extends State<RegisterPage>
         _isSuccess = false;
       }
     });
+
+    if (_isSuccess && mounted) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const HomePage(),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
+      );
+    }
   }
 
   void _goToLogin() {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => LoginPage(),
+        pageBuilder: (_, __, ___) => HomePage(),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 300),

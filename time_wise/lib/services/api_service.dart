@@ -14,8 +14,7 @@ class ApiService {
     }
   }
 
-
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────
 
   static Future<String> register(String username, String password) async {
     try {
@@ -46,13 +45,11 @@ class ApiService {
     }
   }
 
-  // ── Jadwal ────────────────────────────────────────────────────────────────
+  // ── Jadwal ────────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> getJadwal(int idAkun) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/jadwal/$idAkun'),
-      );
+      final response = await http.get(Uri.parse('$baseUrl/jadwal/$idAkun'));
       final List data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
     } catch (_) {
@@ -92,11 +89,145 @@ class ApiService {
 
   static Future<bool> deleteJadwal(int idJadwal) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/jadwal/$idJadwal'),
-      );
+      final response =
+          await http.delete(Uri.parse('$baseUrl/jadwal/$idJadwal'));
       final data = jsonDecode(response.body);
       return data['status'] == 'success';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Laporan & Rekomendasi ────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getLaporan(int idAkun) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/laporan/$idAkun'));
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getRekomendasi(int idAkun) async {
+    try {
+      final response =
+          await http.get(Uri.parse('$baseUrl/rekomendasi/$idAkun'));
+      final data = jsonDecode(response.body);
+      final List list = data['rekomendasi'] ?? [];
+      return list.cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ── Tugas ─────────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getTugas(int idAkun) async {
+    try {
+      final response =
+          await http.get(Uri.parse('$baseUrl/api/tugas?idAkun=$idAkun'));
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getTugasById(int idTugas) async {
+    try {
+      final response =
+          await http.get(Uri.parse('$baseUrl/api/tugas/$idTugas'));
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> tambahTugas(
+      int idAkun, Map<String, dynamic> body) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/tugas?idAkun=$idAkun'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> updateTugas(
+      int idTugas, Map<String, dynamic> body) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/tugas/$idTugas'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> deleteTugas(int idTugas) async {
+    try {
+      final response =
+          await http.delete(Uri.parse('$baseUrl/api/tugas/$idTugas'));
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Checklist ─────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getChecklist(int idTugas) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/tugas/$idTugas/checklist'));
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> tambahChecklist(
+      int idTugas, String isi) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/tugas/$idTugas/checklist'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'isi': isi}),
+      );
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> updateChecklist(
+      int idChecklist, String selesai) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/tugas/checklist/$idChecklist'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'selesai': selesai}),
+      );
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> deleteChecklist(int idChecklist) async {
+    try {
+      final response = await http
+          .delete(Uri.parse('$baseUrl/api/tugas/checklist/$idChecklist'));
+      return response.statusCode == 204 || response.statusCode == 200;
     } catch (_) {
       return false;
     }

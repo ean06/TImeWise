@@ -199,8 +199,8 @@ class _DashboardPageState extends State<DashboardPage> {
     }).toList();
 
     hariIni.sort((a, b) {
-      final wa = (a['waktu'] ?? '00:00').toString();
-      final wb = (b['waktu'] ?? '00:00').toString();
+      final wa = (a['waktu_mulai'] ?? '00:00').toString();
+      final wb = (b['waktu_mulai'] ?? '00:00').toString();
       return wa.compareTo(wb);
     });
 
@@ -229,7 +229,7 @@ class _DashboardPageState extends State<DashboardPage> {
             _jadwalHariIni.first['namaJadwal'] ??
             '')
         .toString();
-    final waktu = (_jadwalHariIni.first['waktu'] ?? '').toString();
+    final waktu = (_jadwalHariIni.first['waktu_mulai'] ?? '').toString();
     final waktuDisplay = waktu.length >= 5 ? waktu.substring(0, 5) : waktu;
 
     await NotificationService.showImmediate(
@@ -538,7 +538,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   (item['prioritas'] ?? '').toString();
                               final color = _priorityColor(prioritas);
                               final waktu =
-                                  (item['waktu'] ?? '').toString();
+                                  (item['waktu_mulai'] ?? '').toString();
                               final waktuDisplay = waktu.length >= 5
                                   ? waktu.substring(0, 5)
                                   : waktu;
