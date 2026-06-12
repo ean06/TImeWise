@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../services/session_service.dart';
+import '../../services/api_service.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -15,13 +17,38 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _obscureOld = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
+  bool _isLoading = false;
 
   void _updatePassword() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password berhasil diubah!'), backgroundColor: Color(0xFF2EAD65)),
+      setState(() => _isLoading = true);
+
+      final idAkun = await SessionService.getIdAkun();
+      final result = await ApiService.changePassword(
+        idAkun,
+        _oldPasswordController.text,
+        _newPasswordController.text,
       );
-      Navigator.pop(context);
+
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+
+      if (result['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password berhasil diubah!'),
+            backgroundColor: Color(0xFF2EAD65),
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Gagal mengubah password.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -97,14 +124,20 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: _updatePassword,
+                    onPressed: _isLoading ? null : _updatePassword,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2EAD65),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
-                    child: const Text('Perbarui Password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text('Perbarui Password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   ),
                 ),
               ],

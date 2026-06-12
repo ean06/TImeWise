@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../services/session_service.dart';
+import '../../services/api_service.dart';
 import '../../services/notification_service.dart';
 
 class NotificationPage extends StatefulWidget {
@@ -26,6 +28,25 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> _loadSetting() async {
+    try {
+      final idAkun = await SessionService.getIdAkun();
+      final res = await ApiService.getAkun(idAkun);
+      if (res['status'] == 'success') {
+        setState(() {
+          _notifAktif = res['status_notif'] == 'y';
+          _menitCtrl.text = (res['waktu_notif'] ?? 30).toString();
+          _isLoading = false;
+        });
+        // Sync ke local storage untuk keperluan local scheduling
+        await NotificationService.saveSetting(
+          status: _notifAktif,
+          reminderMenit: res['waktu_notif'] as int? ?? 30,
+        );
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback ke local storage jika request API gagal
     final setting = await NotificationService.loadSetting();
     setState(() {
       _notifAktif = setting['status'] as bool;
@@ -46,18 +67,34 @@ class _NotificationPageState extends State<NotificationPage> {
       return;
     }
 
-    await NotificationService.saveSetting(
-      status: _notifAktif,
-      reminderMenit: menit,
-    );
+    setState(() => _isLoading = true);
+    final idAkun = await SessionService.getIdAkun();
+    final result = await ApiService.updateNotification(idAkun, _notifAktif, menit);
+    setState(() => _isLoading = false);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Pengaturan notifikasi disimpan'),
-        backgroundColor: Color(0xFF2EAD65),
-      ),
-    );
+
+    if (result['status'] == 'success') {
+      // Sync ke local storage jika update di backend berhasil
+      await NotificationService.saveSetting(
+        status: _notifAktif,
+        reminderMenit: menit,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pengaturan notifikasi disimpan'),
+          backgroundColor: Color(0xFF2EAD65),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Gagal menyimpan pengaturan ke database'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override

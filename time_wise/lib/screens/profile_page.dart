@@ -272,7 +272,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildMenuItem(
                         icon: Icons.person_outline_rounded,
                         label: 'Edit Profile',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
+                        onTap: () async {
+                          final updated = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const EditProfilePage()),
+                          );
+                          if (updated == true) {
+                            _loadSession();
+                          }
+                        },
                         isFirst: true,
                       ),
                       _buildDivider(),

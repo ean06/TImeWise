@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/session_service.dart';
+import '../../services/api_service.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -10,7 +11,6 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   bool _isLoading = false;
 
@@ -23,28 +23,55 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void _initData() async {
     final currentUsername = await SessionService.getUsername();
     setState(() {
-      _nameController.text = currentUsername;
-      _usernameController.text = currentUsername.toLowerCase().replaceAll(' ', '_');
+      _usernameController.text = currentUsername;
     });
   }
 
   void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
-      await Future.delayed(const Duration(milliseconds: 800));
-      
-      // await SessionService.saveSession(_nameController.text, await SessionService.getIdAkun());
+
+      final idAkun = await SessionService.getIdAkun();
+      final result = await ApiService.updateProfile(
+        idAkun,
+        _usernameController.text.trim(),
+      );
 
       setState(() => _isLoading = false);
       if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profil berhasil diperbarui!'), backgroundColor: Color(0xFF2EAD65)),
-      );
-      Navigator.pop(context, true); 
+
+      if (result['status'] == 'success') {
+        // Update session lokal
+        await SessionService.saveUsername(_usernameController.text.trim());
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profil berhasil diperbarui!'),
+            backgroundColor: Color(0xFF2EAD65),
+          ),
+        );
+        Navigator.pop(context, true);
+      } else if (result['status'] == 'username_taken') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Username sudah dipakai. Gunakan username lain.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Gagal memperbarui profil.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -90,18 +117,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                    prefixIcon: const Icon(Icons.person_outline),
-                  ),
-                  validator: (val) => val!.isEmpty ? 'Nama tidak boleh kosong' : null,
-                ),
-                const SizedBox(height: 16),
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(

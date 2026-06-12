@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import 'jadwal_page.dart';
@@ -15,6 +18,7 @@ class _LaporanPageState extends State<LaporanPage> {
   final List<String> _tabs = ['Harian', 'Mingguan', 'Bulanan'];
   List<Map<String, dynamic>> _allJadwal = [];
   bool _isLoading = false;
+  bool _isExporting = false;
   int _idAkun = 0;
 
   @override
@@ -142,6 +146,150 @@ class _LaporanPageState extends State<LaporanPage> {
     return max == 0 ? 1 : max;
   }
 
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final laporan = await ApiService.getLaporan(_idAkun);
+      final username = await SessionService.getUsername();
+
+      final currentData = _currentData;
+      final total =
+          currentData.fold<int>(0, (s, e) => s + (e['count'] as int));
+      final avg = currentData.isEmpty
+          ? '0'
+          : (total / currentData.length).toStringAsFixed(1);
+
+      final harian = (laporan['harian'] as List?) ?? [];
+      final mingguan = (laporan['mingguan'] as List?) ?? [];
+      final jamSibuk = (laporan['jam_sibuk'] as List?) ?? [];
+      final totalJadwalServer = laporan['total_jadwal'] ?? _totalJadwal;
+
+      final doc = pw.Document();
+      final now = DateTime.now();
+      final tanggalCetak =
+          '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => [
+            pw.Header(
+              level: 0,
+              child: pw.Text(
+                'Laporan TimeWise',
+                style: pw.TextStyle(
+                    fontSize: 22, fontWeight: pw.FontWeight.bold),
+              ),
+            ),
+            pw.Text('Pengguna: $username'),
+            pw.Text('Tab Laporan: ${_tabs[_selectedTab]}'),
+            pw.Text('Dicetak pada: $tanggalCetak'),
+            pw.SizedBox(height: 16),
+
+            pw.Text('Ringkasan',
+                style: pw.TextStyle(
+                    fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 6),
+            pw.Bullet(text: 'Total Jadwal: $totalJadwalServer'),
+            pw.Bullet(
+                text:
+                    'Rata-rata (${_tabs[_selectedTab]}): $avg per periode'),
+            pw.SizedBox(height: 16),
+
+            pw.Text('Statistik ${_tabs[_selectedTab]}',
+                style: pw.TextStyle(
+                    fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 6),
+            pw.Table.fromTextArray(
+              headers: ['Periode', 'Tanggal/Keterangan', 'Jumlah Jadwal'],
+              data: currentData
+                  .map((e) => [
+                        e['label'].toString(),
+                        e['sublabel'].toString(),
+                        e['count'].toString(),
+                      ])
+                  .toList(),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              cellAlignment: pw.Alignment.centerLeft,
+            ),
+            pw.SizedBox(height: 16),
+
+            if (harian.isNotEmpty) ...[
+              pw.Text('Jadwal Harian (Minggu Ini)',
+                  style: pw.TextStyle(
+                      fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 6),
+              pw.Table.fromTextArray(
+                headers: ['Hari', 'Tanggal', 'Jumlah'],
+                data: harian
+                    .map((e) => [
+                          e['label'].toString(),
+                          e['tanggal'].toString(),
+                          e['jumlah'].toString(),
+                        ])
+                    .toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 16),
+            ],
+
+            if (mingguan.isNotEmpty) ...[
+              pw.Text('Jadwal Mingguan (Bulan Ini)',
+                  style: pw.TextStyle(
+                      fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 6),
+              pw.Table.fromTextArray(
+                headers: ['Minggu', 'Jumlah'],
+                data: mingguan
+                    .map((e) => [
+                          e['label'].toString(),
+                          e['jumlah'].toString(),
+                        ])
+                    .toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 16),
+            ],
+
+            if (jamSibuk.isNotEmpty) ...[
+              pw.Text('Jam Tersibuk',
+                  style: pw.TextStyle(
+                      fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 6),
+              pw.Table.fromTextArray(
+                headers: ['Jam', 'Jumlah Jadwal'],
+                data: jamSibuk
+                    .map((e) => [
+                          e['jam'].toString(),
+                          e['jumlah'].toString(),
+                        ])
+                    .toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+            ],
+          ],
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (format) async => doc.save(),
+        name: 'laporan_timewise_${now.millisecondsSinceEpoch}.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuat PDF: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentData = _currentData;
@@ -177,17 +325,43 @@ class _LaporanPageState extends State<LaporanPage> {
                         color: Colors.white,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: _fetchData,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _isExporting ? null : _exportPdf,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: _isExporting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.picture_as_pdf_outlined,
+                                    color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.refresh,
-                            color: Colors.white, size: 18),
-                      ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _fetchData,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.refresh,
+                                color: Colors.white, size: 18),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

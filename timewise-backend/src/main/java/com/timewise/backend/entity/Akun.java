@@ -26,7 +26,7 @@ public class Akun {
     private StatusNotif statusNotif = StatusNotif.y;
 
     @Column(name = "waktu_notif")
-    private LocalTime waktuNotif;
+    private Integer waktuNotif;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

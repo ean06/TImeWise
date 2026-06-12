@@ -106,12 +106,14 @@ class NotificationService {
   static Future<void> rescheduleAll(List<dynamic> jadwalList) async {
     await _plugin.cancelAll();
     for (final j in jadwalList) {
-      if (j['tanggal'] != null && j['waktu'] != null) {
+      final tgl = j['tanggal'] as String?;
+      final wkt = (j['waktu_mulai'] ?? j['waktuMulai'] ?? j['waktu']) as String?;
+      if (tgl != null && wkt != null) {
         await scheduleJadwal(
-          idJadwal:    j['id_jadwal'] as int,
-          namaJadwal:  j['nama_jadwal'] as String,
-          tanggal:     j['tanggal'] as String,
-          waktu:       j['waktu'] as String,
+          idJadwal:    (j['id_jadwal'] ?? j['idJadwal'] ?? 0) as int,
+          namaJadwal:  (j['nama_jadwal'] ?? j['namaJadwal'] ?? '') as String,
+          tanggal:     tgl,
+          waktu:       wkt,
         );
       }
     }

@@ -45,6 +45,18 @@ class ApiService {
     }
   }
 
+  // ── Kategori ─────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getKategori(int idAkun) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/kategori/$idAkun'));
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
   // ── Jadwal ────────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> getJadwal(int idAkun) async {
@@ -230,6 +242,71 @@ class ApiService {
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (_) {
       return false;
+    }
+  }
+
+  // ── Profile ──────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getAkun(int idAkun) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/akun/$idAkun'),
+      );
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } catch (_) {
+      return {'status': 'error', 'message': 'Koneksi gagal. Periksa server.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateProfile(
+      int idAkun, String username) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/akun/$idAkun/profile'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username}),
+      );
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } catch (_) {
+      return {'status': 'error', 'message': 'Koneksi gagal. Periksa server.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> changePassword(
+      int idAkun, String oldPassword, String newPassword) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/akun/$idAkun/change-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } catch (_) {
+      return {'status': 'error', 'message': 'Koneksi gagal. Periksa server.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateNotification(
+      int idAkun, bool statusNotif, int waktuNotif) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/akun/$idAkun/notification'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'statusNotif': statusNotif,
+          'waktuNotif': waktuNotif,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } catch (_) {
+      return {'status': 'error', 'message': 'Koneksi gagal. Periksa server.'};
     }
   }
 }
