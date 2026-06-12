@@ -1,15 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'dart:io';
 
 class ApiService {
   static String get baseUrl {
     if (kIsWeb) {
-      return "http://127.0.0.1:8080"; // Web
+      return "http://127.0.0.1:8080";
+    } else if (Platform.isAndroid) {
+      return "http://192.168.0.101:8080";
     } else {
-      return "http://10.0.2.2:8080"; // Android Emulator
+      return "http://10.0.2.2:8080";
     }
   }
+
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 

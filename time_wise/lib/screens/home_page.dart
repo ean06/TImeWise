@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:time_wise/services/session_service.dart';
 import 'package:time_wise/services/api_service.dart';
+import 'package:time_wise/services/notification_service.dart';
 import 'jadwal_page.dart';
 import 'tugas_page.dart';
 import 'timer_page.dart';
@@ -211,6 +212,32 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  // ── TRIGGER NOTIFIKASI ───────────────────────────────────────────────────────
+  Future<void> _triggerNotifikasi() async {
+    if (_jadwalHariIni.isEmpty) {
+      await NotificationService.showImmediate(
+        title: 'Tidak ada jadwal hari ini',
+        body: 'Kamu bebas hari ini! Tambahkan jadwal baru.',
+      );
+      return;
+    }
+
+    await NotificationService.rescheduleAll(_jadwalHariIni);
+
+    final jumlah = _jadwalHariIni.length;
+    final jadwalPertama = (_jadwalHariIni.first['nama_jadwal'] ??
+            _jadwalHariIni.first['namaJadwal'] ??
+            '')
+        .toString();
+    final waktu = (_jadwalHariIni.first['waktu'] ?? '').toString();
+    final waktuDisplay = waktu.length >= 5 ? waktu.substring(0, 5) : waktu;
+
+    await NotificationService.showImmediate(
+      title: 'Kamu punya $jumlah jadwal hari ini',
+      body: 'Terdekat: $jadwalPertama pukul $waktuDisplay WIB',
+    );
+  }
+
   String _greetingText() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Selamat Pagi!';
@@ -317,7 +344,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         _buildHeaderActionButton(
                           icon: Icons.notifications_outlined,
                           hasBadge: _jadwalHariIni.isNotEmpty,
-                          onTap: () {},
+                          onTap: () => _triggerNotifikasi(), // ← trigger
                         ),
                       ],
                     ),
@@ -329,9 +356,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: const Text(
+                  child: Text(
                     'Mulai tugas\nhari ini.',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -397,24 +424,6 @@ class _DashboardPageState extends State<DashboardPage> {
                               iconColor: const Color(0xFFFF9800),
                               pageIndex: 2,
                             ),
-                            // _buildMenuCard(
-                            //   context,
-                            //   icon: Icons.check_box_outlined,
-                            //   label: 'Tugas',
-                            //   subtitle: 'Todo list',
-                            // color: const Color(0xFFFCE4EC),
-                            // iconColor: const Color(0xFFE91E63),
-                            //   pageIndex: 2,
-                            // ),
-                            // _buildMenuCard(
-                            //   context,
-                            //   icon: Icons.timer_outlined,
-                            //   label: 'Timer',
-                            //   subtitle: 'Pomodoro',
-                            //   color: const Color(0xFFE3F2FD),
-                            //   iconColor: const Color(0xFF2196F3),
-                            //   pageIndex: 4,
-                            // ),
                           ],
                         ),
 
@@ -442,7 +451,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                // Tombol refresh jadwal
                                 GestureDetector(
                                   onTap: () => _fetchJadwalHariIni(_idAkun),
                                   child: const Icon(
@@ -457,7 +465,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                         const SizedBox(height: 12),
 
-                        // State: loading
                         if (_isLoadingJadwal)
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 24),
@@ -468,7 +475,6 @@ class _DashboardPageState extends State<DashboardPage> {
                               ),
                             ),
                           )
-
                         else if (_jadwalHariIni.isEmpty)
                           Container(
                             width: double.infinity,
@@ -493,11 +499,15 @@ class _DashboardPageState extends State<DashboardPage> {
                                 const SizedBox(height: 4),
                                 GestureDetector(
                                   onTap: () {
-                                    final homeState = context
-                                        .findAncestorStateOfType<
-                                            _HomePageState>();
-                                    homeState?.setState(
-                                        () => homeState._currentIndex = 1);
+                                    // 1. Memperbaiki sintaks findAncestorStateOfType dengan tanda < > yang benar
+                                    final homeState = context.findAncestorStateOfType<_HomePageState>();
+                                    
+                                    if (homeState != null) {
+                                      // 2. Menggunakan blok { } di dalam setState, bukan tanda panah =>
+                                      homeState.setState(() {
+                                        homeState._currentIndex = 1; 
+                                      });
+                                    }
                                   },
                                   child: const Text(
                                     'Tambah jadwal →',
@@ -511,8 +521,6 @@ class _DashboardPageState extends State<DashboardPage> {
                               ],
                             ),
                           )
-
-                        // State: ada data
                         else
                           ListView.separated(
                             shrinkWrap: true,
@@ -544,8 +552,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color:
-                                          color.withOpacity(0.08),
+                                      color: color.withOpacity(0.08),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),
@@ -565,8 +572,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-
-                                    // Waktu
                                     Column(
                                       children: [
                                         Text(
@@ -586,7 +591,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                         ),
                                       ],
                                     ),
-
                                     Container(
                                       width: 1,
                                       height: 36,
@@ -594,7 +598,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                           horizontal: 12),
                                       color: Colors.grey.withOpacity(0.15),
                                     ),
-
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -617,26 +620,22 @@ class _DashboardPageState extends State<DashboardPage> {
                                                         horizontal: 8,
                                                         vertical: 2),
                                                 decoration: BoxDecoration(
-                                                  color: color
-                                                      .withOpacity(0.1),
+                                                  color: color.withOpacity(0.1),
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          6),
+                                                      BorderRadius.circular(6),
                                                 ),
                                                 child: Text(
                                                   prioritas,
                                                   style: TextStyle(
                                                     fontSize: 10,
                                                     color: color,
-                                                    fontWeight:
-                                                        FontWeight.w600,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
                                               ),
                                               if (deadline.length >= 10) ...[
                                                 const SizedBox(width: 6),
-                                                Icon(
-                                                    Icons.flag_outlined,
+                                                const Icon(Icons.flag_outlined,
                                                     size: 11,
                                                     color: Colors.black38),
                                                 const SizedBox(width: 2),
@@ -805,8 +804,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   color: Colors.black87)),
           const SizedBox(height: 4),
           Text(desc,
-              style:
-                  const TextStyle(fontSize: 12, color: Colors.black45)),
+              style: const TextStyle(fontSize: 12, color: Colors.black45)),
         ],
       ),
     );

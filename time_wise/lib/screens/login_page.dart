@@ -87,6 +87,8 @@ class _LoginPageState extends State<LoginPage>
       });
 
       if (!mounted) return;
+      print('Base URL: ${ApiService.baseUrl}');
+      print('Login URL: ${ApiService.baseUrl}/api/auth/login');
       Navigator.pushReplacementNamed(context, '/HomePage');
     } else {
       setState(() {

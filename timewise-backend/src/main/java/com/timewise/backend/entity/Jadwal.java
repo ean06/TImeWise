@@ -1,9 +1,9 @@
 package com.timewise.backend.entity;
 
+import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
-
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "jadwal")
@@ -14,79 +14,105 @@ public class Jadwal {
     @Column(name = "id_jadwal")
     private Integer idJadwal;
 
-    @Column(name = "nama_jadwal")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_akun", nullable = false)
+    private Akun akun;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_kategori")
+    private Kategori kategori;
+
+    @Column(name = "nama_jadwal", nullable = false, length = 100)
     private String namaJadwal;
+
+    @Column(name = "waktu_mulai")
+    private LocalTime waktuMulai;
+
+    @Column(name = "waktu_selesai")
+    private LocalTime waktuSelesai;
 
     @Column(name = "tanggal")
     private LocalDate tanggal;
 
-    @Column(name = "waktu")
-    private LocalTime waktu;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "timeless", columnDefinition = "ENUM('y','n') DEFAULT 'n'")
+    private Timeless timeless = Timeless.n;
 
-    @Column(name = "prioritas")
-    private String prioritas;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "prioritas", columnDefinition = "ENUM('rendah','sedang','tinggi') DEFAULT 'sedang'")
+    private Prioritas prioritas = Prioritas.sedang;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", columnDefinition = "ENUM('pending','selesai','terlewat') DEFAULT 'pending'")
+    private Status status = Status.pending;
 
     @Column(name = "deadline")
     private LocalDate deadline;
 
-    @Column(name = "id_akun")
-    private Integer idAkun;
+    @Column(name = "catatan", columnDefinition = "TEXT")
+    private String catatan;
 
-    // Getter dan Setter
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
-    public Integer getIdJadwal() {
-        return idJadwal;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
-    public void setIdJadwal(Integer idJadwal) {
-        this.idJadwal = idJadwal;
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
-    public String getNamaJadwal() {
-        return namaJadwal;
-    }
+    public enum Timeless  { y, n }
+    public enum Prioritas { rendah, sedang, tinggi }
+    public enum Status    { pending, selesai, terlewat }
 
-    public void setNamaJadwal(String namaJadwal) {
-        this.namaJadwal = namaJadwal;
-    }
+    // Getters & Setters
+    public Integer getIdJadwal() { return idJadwal; }
+    public void setIdJadwal(Integer idJadwal) { this.idJadwal = idJadwal; }
 
-    public LocalDate getTanggal() {
-        return tanggal;
-    }
+    public Akun getAkun() { return akun; }
+    public void setAkun(Akun akun) { this.akun = akun; }
 
-    public void setTanggal(LocalDate tanggal) {
-        this.tanggal = tanggal;
-    }
+    public Kategori getKategori() { return kategori; }
+    public void setKategori(Kategori kategori) { this.kategori = kategori; }
 
-    public LocalTime getWaktu() {
-        return waktu;
-    }
+    public String getNamaJadwal() { return namaJadwal; }
+    public void setNamaJadwal(String namaJadwal) { this.namaJadwal = namaJadwal; }
 
-    public void setWaktu(LocalTime waktu) {
-        this.waktu = waktu;
-    }
+    public LocalTime getWaktuMulai() { return waktuMulai; }
+    public void setWaktuMulai(LocalTime waktuMulai) { this.waktuMulai = waktuMulai; }
 
-    public String getPrioritas() {
-        return prioritas;
-    }
+    public LocalTime getWaktuSelesai() { return waktuSelesai; }
+    public void setWaktuSelesai(LocalTime waktuSelesai) { this.waktuSelesai = waktuSelesai; }
 
-    public void setPrioritas(String prioritas) {
-        this.prioritas = prioritas;
-    }
+    public LocalDate getTanggal() { return tanggal; }
+    public void setTanggal(LocalDate tanggal) { this.tanggal = tanggal; }
 
-    public LocalDate getDeadline() {
-        return deadline;
-    }
+    public Timeless getTimeless() { return timeless; }
+    public void setTimeless(Timeless timeless) { this.timeless = timeless; }
 
-    public void setDeadline(LocalDate deadline) {
-        this.deadline = deadline;
-    }
+    public Prioritas getPrioritas() { return prioritas; }
+    public void setPrioritas(Prioritas prioritas) { this.prioritas = prioritas; }
 
-    public Integer getIdAkun() {
-        return idAkun;
-    }
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
 
-    public void setIdAkun(Integer idAkun) {
-        this.idAkun = idAkun;
-    }
+    public LocalDate getDeadline() { return deadline; }
+    public void setDeadline(LocalDate deadline) { this.deadline = deadline; }
+
+    public String getCatatan() { return catatan; }
+    public void setCatatan(String catatan) { this.catatan = catatan; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

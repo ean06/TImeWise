@@ -116,4 +116,26 @@ class NotificationService {
       }
     }
   }
+
+  // ── TAMPILKAN NOTIFIKASI LANGSUNG ─────────────────────────────────────────────
+  static Future<void> showImmediate({
+    required String title,
+    required String body,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'timewise_channel',
+      'TimeWise Reminder',
+      channelDescription: 'Pengingat jadwal TimeWise',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+    );
+
+    await _plugin.show(
+      0,
+      title,
+      body,
+      const NotificationDetails(android: androidDetails),
+    );
+  }
 }

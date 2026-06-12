@@ -1,10 +1,12 @@
 package com.timewise.backend.controller;
 
 import com.timewise.backend.dto.TambahJadwalRequest;
+import com.timewise.backend.entity.Akun;
 import com.timewise.backend.entity.Jadwal;
+import com.timewise.backend.entity.Kategori;
+import com.timewise.backend.repository.AkunRepository;
 import com.timewise.backend.repository.JadwalRepository;
-import com.timewise.backend.repository.LaporanRepository;
-import com.timewise.backend.repository.NotifikasiRepository;
+import com.timewise.backend.repository.KategoriRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,48 +23,40 @@ import java.util.stream.Collectors;
 public class JadwalController {
 
     @Autowired private JadwalRepository jadwalRepository;
-    @Autowired private LaporanRepository laporanRepository;
-    @Autowired private NotifikasiRepository notifikasiRepository;
+    @Autowired private AkunRepository akunRepository;
+    @Autowired private KategoriRepository kategoriRepository;
 
     @PostMapping("/tambah-jadwal")
     public Map<String, Object> tambahJadwal(@RequestBody TambahJadwalRequest request) {
         Map<String, Object> response = new HashMap<>();
 
-        List<Jadwal> existing = jadwalRepository.findByIdAkunOrderByTanggalAscWaktuAsc(request.getIdAkun());
-
+        List<Jadwal> existing = jadwalRepository.findByAkunIdAkunOrderByTanggalAscWaktuMulaiAsc(request.getIdAkun());
         for (Jadwal j : existing) {
             if (j.getTanggal() == null || request.getTanggal() == null) continue;
             if (!j.getTanggal().equals(request.getTanggal())) continue;
-            if (j.getWaktu() == null || request.getWaktu() == null) continue;
+            if (j.getWaktuMulai() == null || request.getWaktuMulai() == null) continue;
 
-            long selisihMenit = Math.abs(
-                j.getWaktu().toSecondOfDay() - request.getWaktu().toSecondOfDay()
-            ) / 60;
-
-            if (selisihMenit < 60) {
-                int existingPrio = prioritasToInt(j.getPrioritas());
+            long selisih = Math.abs(j.getWaktuMulai().toSecondOfDay() - request.getWaktuMulai().toSecondOfDay()) / 60;
+            if (selisih < 60) {
+                int existingPrio = prioritasToInt(j.getPrioritas().name());
                 int newPrio      = prioritasToInt(request.getPrioritas());
 
                 if (newPrio < existingPrio) {
                     response.put("status", "conflict");
-                    response.put("message",
-                        "Jadwal bertabrakan dengan '" + j.getNamaJadwal() +
-                        "' (prioritas lebih tinggi). Jadwal tidak disimpan.");
+                    response.put("message", "Jadwal bertabrakan dengan '" + j.getNamaJadwal() + "' (prioritas lebih tinggi).");
                     return response;
                 } else if (newPrio > existingPrio) {
                     response.put("displaced", j.getNamaJadwal());
-                    hapusJadwalDanRelasinya(j.getIdJadwal());
+                    hapusJadwal(j.getIdJadwal());
                 }
             }
         }
 
-        Jadwal jadwal = new Jadwal();
-        jadwal.setNamaJadwal(request.getNamaJadwal());
-        jadwal.setTanggal(request.getTanggal());
-        jadwal.setWaktu(request.getWaktu());
-        jadwal.setPrioritas(request.getPrioritas());
-        jadwal.setDeadline(request.getDeadline());
-        jadwal.setIdAkun(request.getIdAkun());
+        Akun akun = akunRepository.findById(request.getIdAkun()).orElse(null);
+        if (akun == null) { response.put("status", "akun_not_found"); return response; }
+
+        Jadwal jadwal = buildJadwal(new Jadwal(), request);
+        jadwal.setAkun(akun);
         jadwalRepository.save(jadwal);
 
         response.put("status", "success");
@@ -70,168 +64,115 @@ public class JadwalController {
     }
 
     @GetMapping("/jadwal/{idAkun}")
-    public List<Map<String, Object>> getJadwalByUser(@PathVariable Integer idAkun) {
-        return jadwalRepository
-                .findByIdAkunOrderByTanggalAscWaktuAsc(idAkun)
-                .stream()
-                .map(this::toMap)
-                .collect(Collectors.toList());
+    public List<Map<String, Object>> getJadwal(@PathVariable Integer idAkun) {
+        return jadwalRepository.findByAkunIdAkunOrderByTanggalAscWaktuMulaiAsc(idAkun)
+                .stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @PutMapping("/jadwal/{idJadwal}")
-    public Map<String, String> editJadwal(
-            @PathVariable Integer idJadwal,
-            @RequestBody TambahJadwalRequest request) {
+    public Map<String, Object> editJadwal(@PathVariable Integer idJadwal, @RequestBody TambahJadwalRequest request) {
+        Map<String, Object> response = new HashMap<>();
 
-        Map<String, String> response = new HashMap<>();
-        Optional<Jadwal> opt = jadwalRepository.findById(idJadwal);
+        Jadwal jadwal = jadwalRepository.findById(idJadwal).orElse(null);
+        if (jadwal == null) { response.put("status", "not_found"); return response; }
 
-        if (opt.isEmpty()) {
-            response.put("status", "not_found");
-            return response;
-        }
-
-        Jadwal jadwal = opt.get();
-        jadwal.setNamaJadwal(request.getNamaJadwal());
-        jadwal.setTanggal(request.getTanggal());
-        jadwal.setWaktu(request.getWaktu());
-        jadwal.setPrioritas(request.getPrioritas());
-        jadwal.setDeadline(request.getDeadline());
-        jadwalRepository.save(jadwal);
-
+        jadwalRepository.save(buildJadwal(jadwal, request));
         response.put("status", "success");
         return response;
     }
 
     @DeleteMapping("/jadwal/{idJadwal}")
-    public Map<String, String> hapusJadwal(@PathVariable Integer idJadwal) {
-        Map<String, String> response = new HashMap<>();
+    public Map<String, Object> hapusJadwalEndpoint(@PathVariable Integer idJadwal) {
+        Map<String, Object> response = new HashMap<>();
 
-        if (!jadwalRepository.existsById(idJadwal)) {
-            response.put("status", "not_found");
-            return response;
-        }
+        if (!jadwalRepository.existsById(idJadwal)) { response.put("status", "not_found"); return response; }
 
-        hapusJadwalDanRelasinya(idJadwal);
+        hapusJadwal(idJadwal);
         response.put("status", "success");
         return response;
     }
 
     @GetMapping("/laporan/{idAkun}")
     public Map<String, Object> getLaporan(@PathVariable Integer idAkun) {
-        List<Jadwal> semua = jadwalRepository.findAllByIdAkun(idAkun);
-        LocalDate today = LocalDate.now();
+        List<Jadwal> semua  = jadwalRepository.findAllByAkunIdAkun(idAkun);
+        LocalDate today     = LocalDate.now();
+        LocalDate startMgg  = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        String[] namaHari   = { "Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min" };
 
-        LocalDate startMinggu = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        String[] namaHari = {"Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"};
         List<Map<String, Object>> harian = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
-            LocalDate hari = startMinggu.plusDays(i);
-            long jumlah = semua.stream()
-                    .filter(j -> hari.equals(j.getTanggal()))
-                    .count();
-            Map<String, Object> m = new HashMap<>();
-            m.put("label", namaHari[i]);
-            m.put("tanggal", hari.toString());
-            m.put("jumlah", jumlah);
-            harian.add(m);
+            LocalDate hari = startMgg.plusDays(i);
+            harian.add(Map.of("label", namaHari[i], "tanggal", hari.toString(),
+                    "jumlah", semua.stream().filter(j -> hari.equals(j.getTanggal())).count()));
         }
 
-        LocalDate startBulan = today.withDayOfMonth(1);
-        LocalDate endBulan   = today.with(TemporalAdjusters.lastDayOfMonth());
-        WeekFields wf = WeekFields.of(DayOfWeek.MONDAY, 1);
-        int mingguAwal  = startBulan.get(wf.weekOfMonth());
-        int mingguAkhir = endBulan.get(wf.weekOfMonth());
-
+        WeekFields wf       = WeekFields.of(DayOfWeek.MONDAY, 1);
+        LocalDate startBln  = today.withDayOfMonth(1);
+        LocalDate endBln    = today.with(TemporalAdjusters.lastDayOfMonth());
         List<Map<String, Object>> mingguan = new ArrayList<>();
-        for (int w = mingguAwal; w <= mingguAkhir; w++) {
+        for (int w = startBln.get(wf.weekOfMonth()); w <= endBln.get(wf.weekOfMonth()); w++) {
             final int mgg = w;
-            long jumlah = semua.stream()
-                    .filter(j -> j.getTanggal() != null
-                            && j.getTanggal().getMonth() == today.getMonth()
-                            && j.getTanggal().getYear() == today.getYear()
-                            && j.getTanggal().get(wf.weekOfMonth()) == mgg)
-                    .count();
-            Map<String, Object> m = new HashMap<>();
-            m.put("label", "Mgg " + w);
-            m.put("jumlah", jumlah);
-            mingguan.add(m);
+            long jumlah = semua.stream().filter(j -> j.getTanggal() != null
+                    && j.getTanggal().getMonth() == today.getMonth()
+                    && j.getTanggal().getYear()  == today.getYear()
+                    && j.getTanggal().get(wf.weekOfMonth()) == mgg).count();
+            mingguan.add(Map.of("label", "Mgg " + w, "jumlah", jumlah));
         }
 
-        Map<Integer, Long> perJam = semua.stream()
-                .filter(j -> j.getWaktu() != null)
-                .collect(Collectors.groupingBy(
-                        j -> j.getWaktu().getHour(),
-                        Collectors.counting()
-                ));
-
-        List<Map<String, Object>> jamSibuk = perJam.entrySet().stream()
-                .sorted(Map.Entry.<Integer, Long>comparingByValue().reversed())
-                .limit(5)
-                .map(e -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("jam", String.format("%02d:00", e.getKey()));
-                    m.put("jumlah", e.getValue());
-                    return m;
-                })
+        List<Map<String, Object>> jamSibuk = semua.stream()
+                .filter(j -> j.getWaktuMulai() != null)
+                .collect(Collectors.groupingBy(j -> j.getWaktuMulai().getHour(), Collectors.counting()))
+                .entrySet().stream()
+                .sorted(Map.Entry.<Integer, Long>comparingByValue().reversed()).limit(5)
+                .map(e -> Map.<String, Object>of("jam", String.format("%02d:00", e.getKey()), "jumlah", e.getValue()))
                 .collect(Collectors.toList());
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("harian", harian);
-        result.put("mingguan", mingguan);
-        result.put("jam_sibuk", jamSibuk);
-        result.put("total_jadwal", semua.size());
-        return result;
+        return Map.of("harian", harian, "mingguan", mingguan, "jam_sibuk", jamSibuk, "total_jadwal", semua.size());
     }
 
     @GetMapping("/rekomendasi/{idAkun}")
     public Map<String, Object> getRekomendasi(@PathVariable Integer idAkun) {
-        List<Jadwal> semua = jadwalRepository.findAllByIdAkun(idAkun);
-        LocalDate today = LocalDate.now();
-
-        int[][] slots = {{8, 11}, {13, 15}, {19, 21}};
-        String[] labelSlot = {
-            "Pagi (08:00 - 11:00)",
-            "Siang (13:00 - 15:00)",
-            "Malam (19:00 - 21:00)"
-        };
+        List<Jadwal> semua  = jadwalRepository.findAllByAkunIdAkun(idAkun);
+        LocalDate today     = LocalDate.now();
+        int[][] slots       = { {8,11}, {13,15}, {19,21} };
+        String[] labelSlot  = { "Pagi (08:00 - 11:00)", "Siang (13:00 - 15:00)", "Malam (19:00 - 21:00)" };
 
         List<Map<String, Object>> rekomendasi = new ArrayList<>();
-
         for (int d = 0; d < 7 && rekomendasi.size() < 5; d++) {
             LocalDate tgl = today.plusDays(d);
-
             List<Integer> jamTerisi = semua.stream()
-                    .filter(j -> tgl.equals(j.getTanggal()) && j.getWaktu() != null)
-                    .map(j -> j.getWaktu().getHour())
-                    .collect(Collectors.toList());
+                    .filter(j -> tgl.equals(j.getTanggal()) && j.getWaktuMulai() != null)
+                    .map(j -> j.getWaktuMulai().getHour()).collect(Collectors.toList());
 
             for (int s = 0; s < slots.length && rekomendasi.size() < 5; s++) {
-                int jamMulai = slots[s][0];
-                int jamAkhir = slots[s][1];
-
-                boolean adaTabrakan = jamTerisi.stream()
-                        .anyMatch(h -> h >= jamMulai && h < jamAkhir);
-
-                if (!adaTabrakan) {
-                    Map<String, Object> r = new HashMap<>();
-                    r.put("tanggal", tgl.toString());
-                    r.put("slot", labelSlot[s]);
-                    r.put("jam_mulai", String.format("%02d:00", jamMulai));
-                    r.put("jam_selesai", String.format("%02d:00", jamAkhir));
-                    rekomendasi.add(r);
-                }
+                final int mulai = slots[s][0], akhir = slots[s][1];
+                if (jamTerisi.stream().noneMatch(h -> h >= mulai && h < akhir))
+                    rekomendasi.add(Map.of("tanggal", tgl.toString(), "slot", labelSlot[s],
+                            "jam_mulai", String.format("%02d:00", mulai),
+                            "jam_selesai", String.format("%02d:00", akhir)));
             }
         }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("rekomendasi", rekomendasi);
-        return response;
+        return Map.of("rekomendasi", rekomendasi);
     }
 
-    private void hapusJadwalDanRelasinya(Integer idJadwal) {
-        laporanRepository.deleteAll(laporanRepository.findByIdJadwal(idJadwal));
-        notifikasiRepository.deleteAll(notifikasiRepository.findByIdJadwal(idJadwal));
+    // ── Helper ────────────────────────────────────────────
+
+    private Jadwal buildJadwal(Jadwal jadwal, TambahJadwalRequest req) {
+        if (req.getNamaJadwal()   != null) jadwal.setNamaJadwal(req.getNamaJadwal());
+        if (req.getTanggal()      != null) jadwal.setTanggal(req.getTanggal());
+        if (req.getWaktuMulai()   != null) jadwal.setWaktuMulai(req.getWaktuMulai());
+        if (req.getWaktuSelesai() != null) jadwal.setWaktuSelesai(req.getWaktuSelesai());
+        if (req.getDeadline()     != null) jadwal.setDeadline(req.getDeadline());
+        if (req.getCatatan()      != null) jadwal.setCatatan(req.getCatatan());
+        if (req.getTimeless()     != null) jadwal.setTimeless(Jadwal.Timeless.valueOf(req.getTimeless()));
+        if (req.getPrioritas()    != null) jadwal.setPrioritas(Jadwal.Prioritas.valueOf(req.getPrioritas()));
+        if (req.getIdKategori()   != null)
+            jadwal.setKategori(kategoriRepository.findById(req.getIdKategori()).orElse(null));
+        return jadwal;
+    }
+
+    private void hapusJadwal(Integer idJadwal) {
         jadwalRepository.deleteById(idJadwal);
     }
 
@@ -246,13 +187,21 @@ public class JadwalController {
 
     private Map<String, Object> toMap(Jadwal j) {
         Map<String, Object> m = new HashMap<>();
-        m.put("id_jadwal",   j.getIdJadwal());
-        m.put("nama_jadwal", j.getNamaJadwal());
-        m.put("tanggal",     j.getTanggal()  != null ? j.getTanggal().toString()  : null);
-        m.put("waktu",       j.getWaktu()    != null ? j.getWaktu().toString()    : null);
-        m.put("prioritas",   j.getPrioritas());
-        m.put("deadline",    j.getDeadline() != null ? j.getDeadline().toString() : null);
-        m.put("id_akun",     j.getIdAkun());
+        m.put("id_jadwal",    j.getIdJadwal());
+        m.put("nama_jadwal",  j.getNamaJadwal());
+        m.put("tanggal",      j.getTanggal() != null ? j.getTanggal().toString() : null);
+        m.put("waktu_mulai",  j.getWaktuMulai() != null ? j.getWaktuMulai().toString() : null);
+        m.put("waktu_selesai",j.getWaktuSelesai() != null ? j.getWaktuSelesai().toString() : null);
+        m.put("timeless",     j.getTimeless() != null ? j.getTimeless().name() : null);
+        m.put("prioritas",    j.getPrioritas() != null ? j.getPrioritas().name() : null);
+        m.put("status",       j.getStatus() != null ? j.getStatus().name() : null);
+        m.put("deadline",     j.getDeadline() != null ? j.getDeadline().toString() : null);
+        m.put("catatan",      j.getCatatan());
+        if (j.getKategori() != null) {
+            m.put("id_kategori",   j.getKategori().getIdKategori());
+            m.put("nama_kategori", j.getKategori().getNama());
+            m.put("warna_kategori",j.getKategori().getWarna());
+        }
         return m;
     }
 }
