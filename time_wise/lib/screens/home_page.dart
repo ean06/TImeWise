@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:time_wise/services/session_service.dart';
 import 'package:time_wise/services/api_service.dart';
 import 'package:time_wise/services/notification_service.dart';
+import 'package:time_wise/services/notification_history_service.dart';
+import 'notification_page.dart';
 import 'jadwal_page.dart';
 import 'tugas_page.dart';
 import 'laporan_page.dart';
@@ -168,6 +170,7 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Map<String, dynamic>> _jadwalHariIni = [];
   bool _isLoadingJadwal = false;
   bool _showAllJadwal = false;
+  int _unreadNotif = 0;
 
   @override
   void initState() {
@@ -185,6 +188,87 @@ class _DashboardPageState extends State<DashboardPage> {
       });
     }
     await _fetchJadwalHariIni(idAkun);
+    await _checkDeadlineReminders(idAkun);
+    await _refreshUnreadCount();
+  }
+
+  Future<void> _refreshUnreadCount() async {
+    final count = await NotificationHistoryService.getUnreadCount();
+    if (mounted) setState(() => _unreadNotif = count);
+  }
+
+  // ── Cek jadwal & tugas yang mendekati deadline, lalu simpan ke riwayat ──
+  Future<void> _checkDeadlineReminders(int idAkun) async {
+    if (idAkun == 0) return;
+
+    final now = DateTime.now();
+
+    // Jadwal: ingatkan jika waktu_mulai dalam 60 menit ke depan hari ini
+    final semuaJadwal = await ApiService.getJadwal(idAkun);
+    for (final j in semuaJadwal) {
+      final tgl = (j['tanggal'] ?? '').toString();
+      final waktu = (j['waktu_mulai'] ?? '').toString();
+      final status = (j['status'] ?? '').toString();
+      if (tgl.length < 10 || waktu.length < 5) continue;
+      if (status == 'selesai' || status == 'terlewat') continue;
+
+      final tanggal = DateTime.tryParse(tgl);
+      if (tanggal == null) continue;
+
+      final jam = int.tryParse(waktu.substring(0, 2)) ?? 0;
+      final menit = int.tryParse(waktu.substring(3, 5)) ?? 0;
+      final waktuMulai =
+          DateTime(tanggal.year, tanggal.month, tanggal.day, jam, menit);
+
+      final selisih = waktuMulai.difference(now);
+      if (selisih.inMinutes > 0 && selisih.inMinutes <= 60) {
+        final nama = (j['nama_jadwal'] ?? j['namaJadwal'] ?? '').toString();
+        final idJadwal = (j['id_jadwal'] ?? j['idJadwal'] ?? '').toString();
+        final waktuDisplay = waktu.substring(0, 5);
+
+        await NotificationHistoryService.addEntry(
+          title: 'Jadwal segera dimulai',
+          body: '$nama akan dimulai pukul $waktuDisplay WIB',
+          type: 'jadwal',
+          refId: idJadwal,
+        );
+      }
+    }
+
+    // Tugas: ingatkan jika deadline dalam 24 jam ke depan
+    List<Map<String, dynamic>> semuaTugas = [];
+    try {
+      semuaTugas = await ApiService.getTugas(idAkun);
+    } catch (_) {
+      semuaTugas = [];
+    }
+
+    for (final t in semuaTugas) {
+      final deadline = (t['deadline'] ?? t['tanggal'] ?? '').toString();
+      final status = (t['status'] ?? '').toString();
+      if (deadline.length < 10) continue;
+      if (status == 'selesai' || status == 'done') continue;
+
+      final tglDeadline = DateTime.tryParse(deadline);
+      if (tglDeadline == null) continue;
+
+      final batasAtas = DateTime(
+          tglDeadline.year, tglDeadline.month, tglDeadline.day, 23, 59);
+      final selisih = batasAtas.difference(now);
+
+      if (selisih.inHours >= 0 && selisih.inHours <= 24) {
+        final judul =
+            (t['judul'] ?? t['nama_tugas'] ?? t['namaTugas'] ?? '').toString();
+        final idTugas = (t['id_tugas'] ?? t['idTugas'] ?? '').toString();
+
+        await NotificationHistoryService.addEntry(
+          title: 'Deadline tugas mendekat',
+          body: '$judul jatuh tempo hari ini',
+          type: 'tugas',
+          refId: idTugas,
+        );
+      }
+    }
   }
 
   Future<void> _fetchJadwalHariIni(int idAkun) async {
@@ -338,15 +422,19 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                     Row(
                       children: [
-                        _buildHeaderActionButton(
-                          icon: Icons.settings_outlined,
-                          onTap: () {},
-                        ),
                         const SizedBox(width: 12),
                         _buildHeaderActionButton(
                           icon: Icons.notifications_outlined,
-                          hasBadge: _jadwalHariIni.isNotEmpty,
-                          onTap: () => _triggerNotifikasi(), // ← trigger
+                          hasBadge: _unreadNotif > 0,
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationPage(),
+                              ),
+                            );
+                            await _refreshUnreadCount();
+                          },
                         ),
                       ],
                     ),

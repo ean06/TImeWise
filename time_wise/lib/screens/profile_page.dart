@@ -4,6 +4,7 @@ import 'profile/edit_profile.dart';
 import 'profile/change_password.dart';
 import 'profile/notification.dart';
 import 'profile/about_page.dart';
+import 'notification_page.dart' as history;
 
 
 class ProfilePage extends StatefulWidget {
@@ -91,22 +92,30 @@ class _ProfilePageState extends State<ProfilePage> {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const history.NotificationPage(),
+                        ),
                       ),
-                      child: const Icon(Icons.notifications_outlined,
-                          size: 20, color: Colors.black54),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.notifications_outlined,
+                            size: 20, color: Colors.black54),
+                      ),
                     ),
                   ],
                 ),
