@@ -4,8 +4,8 @@ import 'package:time_wise/services/api_service.dart';
 import 'package:time_wise/services/notification_service.dart';
 import 'jadwal_page.dart';
 import 'tugas_page.dart';
-import 'timer_page.dart';
 import 'laporan_page.dart';
+import 'calendar_page.dart';
 import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -19,12 +19,10 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    DashboardPage(),
-    JadwalPage(),
-    LaporanPage(),
-    ProfilePage(),
-    TimerPage(),
-    TugasPage(),
+    DashboardPage(),  // 0
+    JadwalPage(),     // 1
+    TugasPage(),      // 2
+    ProfilePage(),    // 3
   ];
 
   @override
@@ -84,8 +82,8 @@ class _BottomNavBar extends StatelessWidget {
               children: [
                 _NavItem(index: 0, currentIndex: currentIndex, icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', onTap: onTap),
                 _NavItem(index: 1, currentIndex: currentIndex, icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: 'Jadwal', onTap: onTap),
-                _NavItem(index: 2, currentIndex: currentIndex, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Laporan', onTap: onTap),
-                _NavItem(index: 3, currentIndex: currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', onTap: onTap),
+                _NavItem(index: 2, currentIndex: currentIndex, icon: Icons.check_box_outlined, activeIcon: Icons.check_box, label: 'Tugas', onTap: onTap),
+                _NavItem(index: 5, currentIndex: currentIndex, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', onTap: onTap),
               ],
             ),
           ),
@@ -167,6 +165,7 @@ class _DashboardPageState extends State<DashboardPage> {
   int _idAkun = 0;
   List<Map<String, dynamic>> _jadwalHariIni = [];
   bool _isLoadingJadwal = false;
+  bool _showAllJadwal = false;
 
   @override
   void initState() {
@@ -208,6 +207,7 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() {
         _jadwalHariIni = hariIni;
         _isLoadingJadwal = false;
+        _showAllJadwal = false;
       });
     }
   }
@@ -417,12 +417,30 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                             _buildMenuCard(
                               context,
-                              icon: Icons.bar_chart_outlined,
-                              label: 'Laporan',
-                              subtitle: 'Statistik',
+                              icon: Icons.check_box_outlined,
+                              label: 'Tugas',
+                              subtitle: 'Todo list',
                               color: const Color(0xFFFFF3E0),
                               iconColor: const Color(0xFFFF9800),
                               pageIndex: 2,
+                            ),
+                            _buildMenuCard(
+                              context,
+                              icon: Icons.bar_chart_outlined,
+                              label: 'Laporan',
+                              subtitle: 'Statistik',
+                              color: const Color(0xFFFCE4EC),
+                              iconColor: const Color(0xFFE91E63),
+                              pageIndex: 3,
+                            ),
+                            _buildMenuCard(
+                              context,
+                              icon: Icons.event_note_outlined,
+                              label: 'Kalender',
+                              subtitle: 'Lihat semua',
+                              color: const Color(0xFFE3F2FD),
+                              iconColor: const Color(0xFF2196F3),
+                              pageIndex: 4,
                             ),
                           ],
                         ),
@@ -522,13 +540,21 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                           )
                         else
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _jadwalHariIni.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (_, i) {
+                          Builder(builder: (_) {
+                            const limit = 3;
+                            final total = _jadwalHariIni.length;
+                            final showCount =
+                                _showAllJadwal || total <= limit ? total : limit;
+
+                            return Column(
+                              children: [
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: showCount,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 10),
+                                  itemBuilder: (_, i) {
                               final item = _jadwalHariIni[i];
                               final nama = (item['nama_jadwal'] ??
                                       item['namaJadwal'] ??
@@ -539,6 +565,8 @@ class _DashboardPageState extends State<DashboardPage> {
                               final color = _priorityColor(prioritas);
                               final waktu =
                                   (item['waktu_mulai'] ?? '').toString();
+                              final isTimeless =
+                                  (item['timeless'] ?? '').toString().toLowerCase() == 'y';
                               final waktuDisplay = waktu.length >= 5
                                   ? waktu.substring(0, 5)
                                   : waktu;
@@ -573,23 +601,42 @@ class _DashboardPageState extends State<DashboardPage> {
                                     ),
                                     const SizedBox(width: 12),
                                     Column(
-                                      children: [
-                                        Text(
-                                          waktuDisplay,
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w800,
-                                            color: color,
-                                          ),
-                                        ),
-                                        Text(
-                                          'WIB',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color: color.withOpacity(0.6),
-                                          ),
-                                        ),
-                                      ],
+                                      children: isTimeless
+                                          ? [
+                                              Text(
+                                                'Sepanjang',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: color,
+                                                ),
+                                              ),
+                                              Text(
+                                                'Hari',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: color,
+                                                ),
+                                              ),
+                                            ]
+                                          : [
+                                              Text(
+                                                waktuDisplay,
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: color,
+                                                ),
+                                              ),
+                                              Text(
+                                                'WIB',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  color: color.withOpacity(0.6),
+                                                ),
+                                              ),
+                                            ],
                                     ),
                                     Container(
                                       width: 1,
@@ -656,6 +703,40 @@ class _DashboardPageState extends State<DashboardPage> {
                               );
                             },
                           ),
+                                if (total > limit)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 10),
+                                    child: GestureDetector(
+                                      onTap: () => setState(
+                                          () => _showAllJadwal = !_showAllJadwal),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            _showAllJadwal
+                                                ? 'Sembunyikan'
+                                                : 'Lihat selengkapnya (${total - limit})',
+                                            style: const TextStyle(
+                                              color: Color(0xFF2EAD65),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            _showAllJadwal
+                                                ? Icons.keyboard_arrow_up
+                                                : Icons.keyboard_arrow_down,
+                                            size: 16,
+                                            color: const Color(0xFF2EAD65),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          }),
 
                         const SizedBox(height: 28),
 
