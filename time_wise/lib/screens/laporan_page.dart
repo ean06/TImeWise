@@ -146,6 +146,57 @@ class _LaporanPageState extends State<LaporanPage> {
     return max == 0 ? 1 : max;
   }
 
+  // Warna tema untuk PDF
+  static final PdfColor _pdfPrimary = PdfColor.fromInt(0xFF2EAD65);
+  static final PdfColor _pdfPrimaryLight = PdfColor.fromInt(0xFFE8F8EF);
+  static final PdfColor _pdfGrey = PdfColor.fromInt(0xFF6B7280);
+  static final PdfColor _pdfRed = PdfColor.fromInt(0xFFE5484D);
+  static final PdfColor _pdfBorder = PdfColor.fromInt(0xFFE2E8F0);
+
+  /// Menentukan status jadwal: Selesai, Terlewat, atau Mendatang.
+  String _statusJadwal(Map<String, dynamic> item) {
+    final rawStatus = (item['status'] ?? '').toString().toLowerCase();
+    final isDoneFlag = item['is_done'] == true ||
+        item['selesai'] == true ||
+        rawStatus == 'selesai' ||
+        rawStatus == 'done' ||
+        rawStatus == 'completed';
+
+    if (isDoneFlag) return 'Selesai';
+    if (rawStatus == 'terlewat' || rawStatus == 'overdue') return 'Terlewat';
+
+    try {
+      final tanggalStr = _tanggalKey(item);
+      if (tanggalStr.isEmpty) return 'Mendatang';
+
+      DateTime? waktuJadwal;
+      final jamSelesai = item['jam_selesai'] ?? item['jam_akhir'];
+      final jamMulai = item['jam_mulai'] ?? item['jam'];
+      final jamStr = (jamSelesai ?? jamMulai)?.toString();
+
+      if (jamStr != null && jamStr.isNotEmpty) {
+        waktuJadwal = DateTime.tryParse('${tanggalStr}T$jamStr');
+      }
+      waktuJadwal ??= DateTime.tryParse(tanggalStr);
+      if (waktuJadwal == null) return 'Mendatang';
+
+      return waktuJadwal.isBefore(DateTime.now()) ? 'Terlewat' : 'Mendatang';
+    } catch (_) {
+      return 'Mendatang';
+    }
+  }
+
+  PdfColor _statusColor(String status) {
+    switch (status) {
+      case 'Selesai':
+        return _pdfPrimary;
+      case 'Terlewat':
+        return _pdfRed;
+      default:
+        return _pdfGrey;
+    }
+  }
+
   Future<void> _exportPdf() async {
     setState(() => _isExporting = true);
     try {
@@ -153,54 +204,171 @@ class _LaporanPageState extends State<LaporanPage> {
       final username = await SessionService.getUsername();
 
       final currentData = _currentData;
-      final total =
+      final totalPeriode =
           currentData.fold<int>(0, (s, e) => s + (e['count'] as int));
       final avg = currentData.isEmpty
           ? '0'
-          : (total / currentData.length).toStringAsFixed(1);
+          : (totalPeriode / currentData.length).toStringAsFixed(1);
 
       final harian = (laporan['harian'] as List?) ?? [];
       final mingguan = (laporan['mingguan'] as List?) ?? [];
       final jamSibuk = (laporan['jam_sibuk'] as List?) ?? [];
       final totalJadwalServer = laporan['total_jadwal'] ?? _totalJadwal;
 
+      // ── Hitung status per jadwal (selesai / terlewat / mendatang) ──
+      final List<Map<String, dynamic>> daftarJadwal = _allJadwal
+          .map((e) => {...e, '_status': _statusJadwal(e)})
+          .toList();
+
+      daftarJadwal.sort((a, b) => _tanggalKey(b).compareTo(_tanggalKey(a)));
+
+      final totalJadwalCount = daftarJadwal.length;
+      final jumlahSelesai =
+          daftarJadwal.where((e) => e['_status'] == 'Selesai').length;
+      final jumlahTerlewat =
+          daftarJadwal.where((e) => e['_status'] == 'Terlewat').length;
+      final jumlahMendatang =
+          totalJadwalCount - jumlahSelesai - jumlahTerlewat;
+
+      final persenSelesai = totalJadwalCount == 0
+          ? 0.0
+          : (jumlahSelesai / totalJadwalCount) * 100;
+      final persenTerlewat = totalJadwalCount == 0
+          ? 0.0
+          : (jumlahTerlewat / totalJadwalCount) * 100;
+
       final doc = pw.Document();
       final now = DateTime.now();
       final tanggalCetak =
           '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
+      pw.Widget sectionTitle(String text) => pw.Container(
+            margin: const pw.EdgeInsets.only(bottom: 6, top: 4),
+            padding: const pw.EdgeInsets.only(bottom: 4),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(
+                bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.75),
+              ),
+            ),
+            child: pw.Text(
+              text,
+              style: pw.TextStyle(
+                fontSize: 13,
+                fontWeight: pw.FontWeight.bold,
+                color: _pdfPrimary,
+              ),
+            ),
+          );
+
+      pw.Widget statTile(String label, String value, {PdfColor? color}) {
+        return pw.Expanded(
+          child: pw.Container(
+            margin: const pw.EdgeInsets.symmetric(horizontal: 3),
+            padding:
+                const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            decoration: pw.BoxDecoration(
+              color: _pdfPrimaryLight,
+              borderRadius: pw.BorderRadius.circular(8),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(value,
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                      color: color ?? _pdfPrimary,
+                    )),
+                pw.SizedBox(height: 2),
+                pw.Text(label,
+                    style: pw.TextStyle(fontSize: 8, color: _pdfGrey)),
+              ],
+            ),
+          ),
+        );
+      }
+
       doc.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
-          build: (context) => [
-            pw.Header(
-              level: 0,
-              child: pw.Text(
-                'Laporan TimeWise',
-                style: pw.TextStyle(
-                    fontSize: 22, fontWeight: pw.FontWeight.bold),
-              ),
+          header: (context) {
+            if (context.pageNumber == 1) return pw.SizedBox();
+            return pw.Container(
+              alignment: pw.Alignment.centerRight,
+              margin: const pw.EdgeInsets.only(bottom: 8),
+              child: pw.Text('Laporan TimeWise',
+                  style: pw.TextStyle(fontSize: 9, color: _pdfGrey)),
+            );
+          },
+          footer: (context) => pw.Container(
+            alignment: pw.Alignment.centerRight,
+            margin: const pw.EdgeInsets.only(top: 8),
+            child: pw.Text(
+              'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+              style: pw.TextStyle(fontSize: 8, color: _pdfGrey),
             ),
-            pw.Text('Pengguna: $username'),
-            pw.Text('Tab Laporan: ${_tabs[_selectedTab]}'),
-            pw.Text('Dicetak pada: $tanggalCetak'),
+          ),
+          build: (context) => [
+            // ── Header utama ──
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Laporan TimeWise',
+                        style: pw.TextStyle(
+                            fontSize: 22,
+                            fontWeight: pw.FontWeight.bold,
+                            color: _pdfPrimary)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('Tab: ${_tabs[_selectedTab]}',
+                        style: pw.TextStyle(fontSize: 10, color: _pdfGrey)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Pengguna: $username',
+                        style: const pw.TextStyle(fontSize: 10)),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Dicetak: $tanggalCetak',
+                        style: pw.TextStyle(fontSize: 9, color: _pdfGrey)),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 4),
+            pw.Divider(color: PdfColors.grey300),
+            pw.SizedBox(height: 12),
+
+            // ── Ringkasan ──
+            sectionTitle('Ringkasan'),
+            pw.Row(
+              children: [
+                statTile('Total Jadwal', '$totalJadwalServer'),
+                statTile('Selesai', '$jumlahSelesai', color: _pdfPrimary),
+                statTile('Terlewat', '$jumlahTerlewat', color: _pdfRed),
+                statTile('Mendatang', '$jumlahMendatang'),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+            pw.Row(
+              children: [
+                statTile('% Selesai', '${persenSelesai.toStringAsFixed(1)}%',
+                    color: _pdfPrimary),
+                statTile('% Terlewat',
+                    '${persenTerlewat.toStringAsFixed(1)}%',
+                    color: _pdfRed),
+                statTile('Rata-rata (${_tabs[_selectedTab]})',
+                    '$avg / periode'),
+              ],
+            ),
             pw.SizedBox(height: 16),
 
-            pw.Text('Ringkasan',
-                style: pw.TextStyle(
-                    fontSize: 14, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 6),
-            pw.Bullet(text: 'Total Jadwal: $totalJadwalServer'),
-            pw.Bullet(
-                text:
-                    'Rata-rata (${_tabs[_selectedTab]}): $avg per periode'),
-            pw.SizedBox(height: 16),
-
-            pw.Text('Statistik ${_tabs[_selectedTab]}',
-                style: pw.TextStyle(
-                    fontSize: 14, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 6),
+            // ── Statistik periode ──
+            sectionTitle('Statistik ${_tabs[_selectedTab]}'),
             pw.Table.fromTextArray(
               headers: ['Periode', 'Tanggal/Keterangan', 'Jumlah Jadwal'],
               data: currentData
@@ -210,16 +378,105 @@ class _LaporanPageState extends State<LaporanPage> {
                         e['count'].toString(),
                       ])
                   .toList(),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+              headerDecoration: pw.BoxDecoration(color: _pdfPrimary),
               cellAlignment: pw.Alignment.centerLeft,
+              cellStyle: const pw.TextStyle(fontSize: 9),
+              border: pw.TableBorder.all(color: _pdfBorder, width: 0.5),
+              cellPadding:
+                  const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 6),
             ),
             pw.SizedBox(height: 16),
 
+            // ── Daftar Jadwal & Tugas ──
+            sectionTitle('Daftar Jadwal & Tugas (${daftarJadwal.length})'),
+            if (daftarJadwal.isEmpty)
+              pw.Text('Belum ada data jadwal.',
+                  style: pw.TextStyle(fontSize: 10, color: _pdfGrey))
+            else
+              pw.Table(
+                border: pw.TableBorder.all(color: _pdfBorder, width: 0.5),
+                columnWidths: const {
+                  0: pw.FlexColumnWidth(3.2),
+                  1: pw.FlexColumnWidth(1.4),
+                  2: pw.FlexColumnWidth(1),
+                  3: pw.FlexColumnWidth(1.4),
+                },
+                children: [
+                  pw.TableRow(
+                    decoration: pw.BoxDecoration(color: _pdfPrimary),
+                    children: [
+                      'Nama Jadwal/Tugas',
+                      'Tanggal',
+                      'Jam',
+                      'Status',
+                    ]
+                        .map((h) => pw.Padding(
+                              padding: const pw.EdgeInsets.symmetric(
+                                  vertical: 5, horizontal: 6),
+                              child: pw.Text(h,
+                                  style: pw.TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.white)),
+                            ))
+                        .toList(),
+                  ),
+                  ...daftarJadwal.map((item) {
+                    final nama = (item['nama'] ??
+                            item['nama_jadwal'] ??
+                            item['judul'] ??
+                            item['title'] ??
+                            item['kegiatan'] ??
+                            '-')
+                        .toString();
+                    final tanggal = _tanggalKey(item);
+                    final jam =
+                        (item['jam_mulai'] ?? item['jam'] ?? '-').toString();
+                    final status = item['_status'] as String;
+
+                    return pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(nama,
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(tanggal,
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(jam,
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(
+                            status,
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                              color: _statusColor(status),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            pw.SizedBox(height: 16),
+
             if (harian.isNotEmpty) ...[
-              pw.Text('Jadwal Harian (Minggu Ini)',
-                  style: pw.TextStyle(
-                      fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 6),
+              sectionTitle('Jadwal Harian (Minggu Ini)'),
               pw.Table.fromTextArray(
                 headers: ['Hari', 'Tanggal', 'Jumlah'],
                 data: harian
@@ -229,16 +486,19 @@ class _LaporanPageState extends State<LaporanPage> {
                           e['jumlah'].toString(),
                         ])
                     .toList(),
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                headerStyle: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                headerDecoration: pw.BoxDecoration(color: _pdfPrimary),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                border: pw.TableBorder.all(color: _pdfBorder, width: 0.5),
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 6),
               ),
               pw.SizedBox(height: 16),
             ],
 
             if (mingguan.isNotEmpty) ...[
-              pw.Text('Jadwal Mingguan (Bulan Ini)',
-                  style: pw.TextStyle(
-                      fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 6),
+              sectionTitle('Jadwal Mingguan (Bulan Ini)'),
               pw.Table.fromTextArray(
                 headers: ['Minggu', 'Jumlah'],
                 data: mingguan
@@ -247,16 +507,19 @@ class _LaporanPageState extends State<LaporanPage> {
                           e['jumlah'].toString(),
                         ])
                     .toList(),
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                headerStyle: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                headerDecoration: pw.BoxDecoration(color: _pdfPrimary),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                border: pw.TableBorder.all(color: _pdfBorder, width: 0.5),
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 6),
               ),
               pw.SizedBox(height: 16),
             ],
 
             if (jamSibuk.isNotEmpty) ...[
-              pw.Text('Jam Tersibuk',
-                  style: pw.TextStyle(
-                      fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 6),
+              sectionTitle('Jam Tersibuk'),
               pw.Table.fromTextArray(
                 headers: ['Jam', 'Jumlah Jadwal'],
                 data: jamSibuk
@@ -265,7 +528,13 @@ class _LaporanPageState extends State<LaporanPage> {
                           e['jumlah'].toString(),
                         ])
                     .toList(),
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                headerStyle: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                headerDecoration: pw.BoxDecoration(color: _pdfPrimary),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                border: pw.TableBorder.all(color: _pdfBorder, width: 0.5),
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 6),
               ),
             ],
           ],

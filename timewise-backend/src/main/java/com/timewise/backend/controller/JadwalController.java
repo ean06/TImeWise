@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.time.temporal.WeekFields;
 import java.util.*;
@@ -65,8 +67,9 @@ public class JadwalController {
 
     @GetMapping("/jadwal/{idAkun}")
     public List<Map<String, Object>> getJadwal(@PathVariable Integer idAkun) {
-        return jadwalRepository.findByAkunIdAkunOrderByTanggalAscWaktuMulaiAsc(idAkun)
-                .stream().map(this::toMap).collect(Collectors.toList());
+        List<Jadwal> jadwalList = jadwalRepository.findByAkunIdAkunOrderByTanggalAscWaktuMulaiAsc(idAkun);
+        autoMarkTerlewat(jadwalList);
+        return jadwalList.stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @PutMapping("/jadwal/{idJadwal}")
@@ -156,6 +159,31 @@ public class JadwalController {
         return Map.of("rekomendasi", rekomendasi);
     }
 
+    // ── Auto-mark terlewat ────────────────────────────────
+    private void autoMarkTerlewat(List<Jadwal> jadwalList) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Jadwal> toUpdate = new ArrayList<>();
+
+        for (Jadwal j : jadwalList) {
+            // Hanya proses jadwal yang masih pending
+            if (j.getStatus() != Jadwal.Status.pending) continue;
+            // Timeless tidak punya waktu selesai, skip
+            if (j.getTimeless() == Jadwal.Timeless.y) continue;
+            // Harus punya tanggal & waktu_selesai
+            if (j.getTanggal() == null || j.getWaktuSelesai() == null) continue;
+
+            LocalDateTime waktuSelesaiDt = LocalDateTime.of(j.getTanggal(), j.getWaktuSelesai());
+            if (now.isAfter(waktuSelesaiDt)) {
+                j.setStatus(Jadwal.Status.terlewat);
+                toUpdate.add(j);
+            }
+        }
+
+        if (!toUpdate.isEmpty()) {
+            jadwalRepository.saveAll(toUpdate);
+        }
+    }
+
     // ── Helper ────────────────────────────────────────────
 
     private Jadwal buildJadwal(Jadwal jadwal, TambahJadwalRequest req) {
@@ -167,6 +195,7 @@ public class JadwalController {
         if (req.getCatatan()      != null) jadwal.setCatatan(req.getCatatan());
         if (req.getTimeless()     != null) jadwal.setTimeless(Jadwal.Timeless.valueOf(req.getTimeless()));
         if (req.getPrioritas()    != null) jadwal.setPrioritas(Jadwal.Prioritas.valueOf(req.getPrioritas()));
+        if (req.getStatus() != null) jadwal.setStatus(Jadwal.Status.valueOf(req.getStatus()));
         if (req.getIdKategori()   != null)
             jadwal.setKategori(kategoriRepository.findById(req.getIdKategori()).orElse(null));
         return jadwal;

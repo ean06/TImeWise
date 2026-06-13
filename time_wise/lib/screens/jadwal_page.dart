@@ -125,6 +125,20 @@ class _JadwalPageState extends State<JadwalPage> {
   Future<void> _toggleStatus(Map<String, dynamic> item) async {
     final localContext = context;
     final currentStatus = (item['status'] ?? 'pending').toString().toLowerCase();
+
+    // Jika sudah terlewat, tidak bisa diubah via checklist
+    if (currentStatus == 'terlewat') {
+      if (localContext.mounted) {
+        ScaffoldMessenger.of(localContext).showSnackBar(
+          const SnackBar(
+            content: Text('Jadwal sudah terlewat, tidak dapat diubah'),
+            backgroundColor: Color(0xFFE91E63),
+          ),
+        );
+      }
+      return;
+    }
+
     final newStatus = currentStatus == 'selesai' ? 'pending' : 'selesai';
 
     final success = await ApiService.updateJadwal(
@@ -138,7 +152,7 @@ class _JadwalPageState extends State<JadwalPage> {
         ScaffoldMessenger.of(localContext).showSnackBar(
           SnackBar(
             content: Text(newStatus == 'selesai'
-                ? 'Jadwal ditandai selesai'
+                ? 'Jadwal ditandai selesai ✓'
                 : 'Jadwal dikembalikan ke pending'),
             backgroundColor: const Color(0xFF2EAD65),
           ),
@@ -1140,42 +1154,54 @@ class _JadwalPageState extends State<JadwalPage> {
     final warnaKategori = (item['warna_kategori'] ?? '').toString();
     final idJadwal = _idJadwal(item);
     final isSelesai = statusRaw.toLowerCase() == 'selesai';
+    final isTerlewat = statusRaw.toLowerCase() == 'terlewat';
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isSelesai
-            ? Colors.grey.withValues(alpha: 0.06)
-            : color.withValues(alpha: 0.06),
+        color: isTerlewat
+            ? const Color(0xFFE91E63).withValues(alpha: 0.04)
+            : isSelesai
+                ? Colors.grey.withValues(alpha: 0.06)
+                : color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: isSelesai
-                ? Colors.grey.withValues(alpha: 0.2)
-                : color.withValues(alpha: 0.2)),
+            color: isTerlewat
+                ? const Color(0xFFE91E63).withValues(alpha: 0.2)
+                : isSelesai
+                    ? Colors.grey.withValues(alpha: 0.2)
+                    : color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          // Status toggle
+          // Status toggle — nonaktif jika terlewat
           GestureDetector(
-            onTap: () => _toggleStatus(item),
+            onTap: isTerlewat ? null : () => _toggleStatus(item),
             child: Container(
               width: 28,
               height: 28,
               decoration: BoxDecoration(
                 color: isSelesai
                     ? const Color(0xFF2EAD65)
-                    : Colors.transparent,
+                    : isTerlewat
+                        ? const Color(0xFFE91E63).withValues(alpha: 0.15)
+                        : Colors.transparent,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isSelesai
                       ? const Color(0xFF2EAD65)
-                      : Colors.grey.withValues(alpha: 0.4),
+                      : isTerlewat
+                          ? const Color(0xFFE91E63).withValues(alpha: 0.4)
+                          : Colors.grey.withValues(alpha: 0.4),
                   width: 2,
                 ),
               ),
               child: isSelesai
                   ? const Icon(Icons.check, size: 16, color: Colors.white)
-                  : null,
+                  : isTerlewat
+                      ? const Icon(Icons.close, size: 14,
+                          color: Color(0xFFE91E63))
+                      : null,
             ),
           ),
           const SizedBox(width: 12),
@@ -1183,7 +1209,11 @@ class _JadwalPageState extends State<JadwalPage> {
             width: 4,
             height: 52,
             decoration: BoxDecoration(
-              color: isSelesai ? Colors.grey : color,
+              color: isTerlewat
+                  ? const Color(0xFFE91E63).withValues(alpha: 0.5)
+                  : isSelesai
+                      ? Colors.grey
+                      : color,
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -1197,10 +1227,14 @@ class _JadwalPageState extends State<JadwalPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    decoration: isSelesai
+                    decoration: isSelesai || isTerlewat
                         ? TextDecoration.lineThrough
                         : null,
-                    color: isSelesai ? Colors.grey : Colors.black87,
+                    color: isTerlewat
+                        ? const Color(0xFFE91E63).withValues(alpha: 0.7)
+                        : isSelesai
+                            ? Colors.grey
+                            : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -1208,22 +1242,26 @@ class _JadwalPageState extends State<JadwalPage> {
                   children: [
                     Icon(Icons.access_time,
                         size: 12,
-                        color: isSelesai
-                            ? Colors.grey
-                            : Colors.black38),
+                        color: isTerlewat
+                            ? const Color(0xFFE91E63).withValues(alpha: 0.5)
+                            : isSelesai
+                                ? Colors.grey
+                                : Colors.black38),
                     const SizedBox(width: 4),
                     Text('$waktuDisplay$waktuSelesaiDisplay',
                         style: TextStyle(
                             fontSize: 12,
-                            color: isSelesai
-                                ? Colors.grey
-                                : Colors.black45)),
+                            color: isTerlewat
+                                ? const Color(0xFFE91E63).withValues(alpha: 0.5)
+                                : isSelesai
+                                    ? Colors.grey
+                                    : Colors.black45)),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isSelesai
+                        color: isTerlewat || isSelesai
                             ? Colors.grey.withValues(alpha: 0.12)
                             : color.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
@@ -1232,7 +1270,7 @@ class _JadwalPageState extends State<JadwalPage> {
                         prioritas,
                         style: TextStyle(
                             fontSize: 10,
-                            color: isSelesai ? Colors.grey : color,
+                            color: isTerlewat || isSelesai ? Colors.grey : color,
                             fontWeight: FontWeight.w500),
                       ),
                     ),
