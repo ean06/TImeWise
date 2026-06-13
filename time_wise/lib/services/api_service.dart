@@ -57,6 +57,46 @@ class ApiService {
     }
   }
 
+  static Future<bool> tambahKategori(Map<String, dynamic> body) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/kategori'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      final data = jsonDecode(response.body);
+      return data['status'] == 'success';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> updateKategori(
+      int idKategori, Map<String, dynamic> body) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/kategori/$idKategori'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      final data = jsonDecode(response.body);
+      return data['status'] == 'success';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> hapusKategori(int idKategori) async {
+    try {
+      final response =
+          await http.delete(Uri.parse('$baseUrl/kategori/$idKategori'));
+      final data = jsonDecode(response.body);
+      return data['status'] == 'success';
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Jadwal ────────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> getJadwal(int idAkun) async {

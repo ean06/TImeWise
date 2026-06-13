@@ -398,7 +398,11 @@ class _CalendarPageState extends State<CalendarPage> {
     final prioritas = (item['prioritas'] ?? '').toString().toLowerCase();
     final color = _priorityColor(prioritas);
     final waktu = (item['waktu_mulai'] ?? '').toString();
+    final waktuSelesai = (item['waktu_selesai'] ?? '').toString();
     final waktuDisplay = waktu.length >= 5 ? waktu.substring(0, 5) : waktu;
+    final waktuSelesaiDisplay =
+        waktuSelesai.length >= 5 ? waktuSelesai.substring(0, 5) : waktuSelesai;
+    final isTimeless = waktuDisplay.isEmpty && waktuSelesaiDisplay.isEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -431,13 +435,11 @@ class _CalendarPageState extends State<CalendarPage> {
                     color: Colors.black87,
                   ),
                 ),
-                if (waktuDisplay.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '$waktuDisplay WIB',
-                    style: const TextStyle(fontSize: 11, color: Colors.black45),
-                  ),
-                ],
+                const SizedBox(height: 4),
+                Text(
+                  isTimeless ? 'Sepanjang hari' : '$waktuDisplay WIB',
+                  style: const TextStyle(fontSize: 11, color: Colors.black45),
+                ),
               ],
             ),
           ),

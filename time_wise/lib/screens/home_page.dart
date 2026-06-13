@@ -22,7 +22,9 @@ class _HomePageState extends State<HomePage> {
     DashboardPage(),  // 0
     JadwalPage(),     // 1
     TugasPage(),      // 2
-    ProfilePage(),    // 3
+    LaporanPage(),    // 3
+    CalendarPage(),   // 4
+    ProfilePage(),    // 5
   ];
 
   @override

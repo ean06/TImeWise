@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../services/session_service.dart';
+import 'kategori_page.dart';
 
 class JadwalPage extends StatefulWidget {
   final DateTime? initialDate;
@@ -450,9 +451,47 @@ class _JadwalPageState extends State<JadwalPage> {
 
                 // ── Kategori dropdown ──
                 if (kategoriList.isNotEmpty) ...[
-                  const Text('Kategori',
-                      style:
-                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Kategori',
+                          style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600)),
+                      GestureDetector(
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const KategoriPage(),
+                            ),
+                          );
+                          final updatedKategori =
+                              await ApiService.getKategori(_idAkun);
+                          setModal(() {
+                            kategoriList
+                              ..clear()
+                              ..addAll(updatedKategori);
+                          });
+                        },
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add_circle_outline,
+                                size: 14, color: Color(0xFF2EAD65)),
+                            SizedBox(width: 4),
+                            Text(
+                              'Kelola Kategori',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2EAD65),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -545,6 +584,41 @@ class _JadwalPageState extends State<JadwalPage> {
                             ),
                           );
                         }),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ] else ...[
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const KategoriPage(),
+                        ),
+                      );
+                      final updatedKategori =
+                          await ApiService.getKategori(_idAkun);
+                      setModal(() {
+                        kategoriList
+                          ..clear()
+                          ..addAll(updatedKategori);
+                      });
+                    },
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_circle_outline,
+                            size: 14, color: Color(0xFF2EAD65)),
+                        SizedBox(width: 4),
+                        Text(
+                          'Tambah Kategori',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2EAD65),
+                          ),
+                        ),
                       ],
                     ),
                   ),
