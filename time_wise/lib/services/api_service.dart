@@ -218,10 +218,6 @@ class ApiService {
     }
   }
 
-  /// Update tugas. Mengembalikan Map data tugas jika sukses.
-  /// Jika backend menolak (mis. status 400 karena checklist belum lengkap),
-  /// hasil berisi {'error': true, 'message': '...'} agar pesan dari server
-  /// bisa ditampilkan ke pengguna.
   static Future<Map<String, dynamic>?> updateTugas(
       int idTugas, Map<String, dynamic> body) async {
     try {
@@ -305,7 +301,6 @@ class ApiService {
     }
   }
 
-  // Update isi (teks) checklist tanpa mengubah status selesai
   static Future<Map<String, dynamic>?> updateChecklistIsi(
       int idChecklist, String isi) async {
     try {

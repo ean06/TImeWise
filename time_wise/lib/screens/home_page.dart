@@ -203,13 +203,11 @@ class _DashboardPageState extends State<DashboardPage> {
     if (mounted) setState(() => _unreadNotif = count);
   }
 
-  // ── Cek jadwal & tugas yang mendekati deadline, lalu simpan ke riwayat ──
   Future<void> _checkDeadlineReminders(int idAkun) async {
     if (idAkun == 0) return;
 
     final now = DateTime.now();
 
-    // Jadwal: ingatkan jika waktu_mulai dalam 60 menit ke depan hari ini
     final semuaJadwal = await ApiService.getJadwal(idAkun);
     for (final j in semuaJadwal) {
       final tgl = (j['tanggal'] ?? '').toString();
@@ -241,7 +239,6 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     }
 
-    // Tugas: ingatkan jika deadline dalam 24 jam ke depan
     List<Map<String, dynamic>> semuaTugas = [];
     try {
       semuaTugas = await ApiService.getTugas(idAkun);
@@ -277,29 +274,14 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // ── SYNC REMINDER JADWAL (local notification OS) ─────────────────────────────
-  //
-  // Berbeda dari _checkDeadlineReminders (yang hanya menulis riwayat saat
-  // polling), method ini menjadwalkan NOTIFIKASI SISTEM yang akan muncul
-  // sendiri di waktu yang tepat walau app sedang ditutup.
-  //
-  // Formula reminder: waktu_selesai (tabel jadwal) - waktu_notif (tabel akun),
-  // sesuai kesepakatan desain. Jadwal timeless atau yang sudah tidak pending
-  // dilewati otomatis oleh NotificationService.
   Future<void> _syncReminderJadwal(int idAkun) async {
     if (idAkun == 0) return;
 
-    // Ambil waktu_notif milik user dari tabel akun (server), bukan dari
-    // setting lokal device, supaya konsisten dengan apa yang user atur
-    // di halaman Profile.
     final akunData = await ApiService.getAkun(idAkun);
     final waktuNotifMenit = NotificationService.parseWaktuNotif(akunData);
 
     final semuaJadwal = await ApiService.getJadwal(idAkun);
 
-    // Jadwalkan ulang semua reminder berdasarkan data jadwal terbaru.
-    // rescheduleAllByEndTime sudah otomatis skip jadwal timeless / non-pending
-    // / yang waktunya sudah lewat.
     await NotificationService.rescheduleAllByEndTime(
       jadwalList: semuaJadwal,
       waktuNotifMenit: waktuNotifMenit,
@@ -354,7 +336,6 @@ class _DashboardPageState extends State<DashboardPage> {
       return deadline.length >= 10 && deadline.substring(0, 10) == todayKey;
     }).toList();
 
-    // Urutkan: prioritas tinggi dulu, baru berdasarkan judul
     const urutanPrioritas = {'tinggi': 0, 'sedang': 1, 'rendah': 2};
     hariIni.sort((a, b) {
       final pa = urutanPrioritas[(a['prioritas'] ?? 'sedang').toString().toLowerCase()] ?? 1;
@@ -372,8 +353,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  /// Menghitung skor urgensi tugas: deadline mepet + prioritas tinggi = paling atas.
-  /// Skor lebih kecil = lebih urgent. Tugas yang sudah selesai diabaikan.
   List<Map<String, dynamic>> _hitungRekomendasi(
       List<Map<String, dynamic>> semuaTugas) {
     final now = DateTime.now();
@@ -388,7 +367,6 @@ class _DashboardPageState extends State<DashboardPage> {
     final List<Map<String, dynamic>> withScore = aktif.map((t) {
       final deadline = (t['deadline'] ?? '').toString();
       final tglDeadline = DateTime.tryParse(deadline.substring(0, 10)) ?? now;
-      // Selisih hari ke deadline (boleh negatif jika sudah terlambat)
       final selisihHari = tglDeadline.difference(
               DateTime(now.year, now.month, now.day))
           .inDays;
@@ -397,9 +375,6 @@ class _DashboardPageState extends State<DashboardPage> {
           (t['prioritas'] ?? 'sedang').toString().toLowerCase();
       final bobotP = bobotPrioritas[prioritas] ?? 1;
 
-      // Skor gabungan: makin dekat deadline & makin tinggi prioritas -> skor makin kecil.
-      // selisihHari diberi bobot lebih besar supaya deadline mepet selalu didahulukan,
-      // prioritas jadi pembeda saat deadline-nya sama/berdekatan.
       final skor = (selisihHari * 10) + bobotP;
 
       return {
@@ -726,11 +701,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                 const SizedBox(height: 4),
                                 GestureDetector(
                                   onTap: () {
-                                    // 1. Memperbaiki sintaks findAncestorStateOfType dengan tanda < > yang benar
                                     final homeState = context.findAncestorStateOfType<_HomePageState>();
                                     
                                     if (homeState != null) {
-                                      // 2. Menggunakan blok { } di dalam setState, bukan tanda panah =>
                                       homeState.setState(() {
                                         homeState._currentIndex = 1; 
                                       });
@@ -1100,7 +1073,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
                         const SizedBox(height: 28),
 
-                        // ── Rekomendasi Tugas (deadline mepet + prioritas tinggi) ──
+                        // ── Rekomendasi Tugas ──
                         if (_rekomendasiTugas.isNotEmpty) ...[
                           Row(
                             children: const [
@@ -1401,7 +1374,6 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         child: Row(
           children: [
-            // Nomor urut rangking
             Container(
               width: 28,
               height: 28,

@@ -143,7 +143,6 @@ class _ChecklistPageState extends State<ChecklistPage> {
               ),
               const SizedBox(height: 20),
 
-              // ── Pesan error inline (tidak akan tertutup modal) ──
               if (formError != null) ...[
                 Container(
                   width: double.infinity,

@@ -4,23 +4,15 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'notification_history_service.dart';
 
-/// Handler top-level untuk notifikasi yang ditap saat app benar-benar
-/// terminated (bukan cuma background). flutter_local_notifications
-/// mewajibkan fungsi ini berada di top-level atau static, bukan method
-/// instance biasa.
 @pragma('vm:entry-point')
 void notificationBackgroundHandler(NotificationResponse response) {
-  // Tidak bisa langsung memanggil SharedPreferences/async di sini
-  // dengan aman pada semua kondisi isolate, jadi background tap
-  // sengaja tidak mencatat riwayat. Riwayat tetap tercatat saat app
-  // dibuka kembali dan fetch data berjalan (lihat home_page).
 }
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
-  static const _keyStatus   = 'notif_status';   // bool
-  static const _keyReminder = 'notif_reminder';  // int (menit)
+  static const _keyStatus   = 'notif_status';  
+  static const _keyReminder = 'notif_reminder'; 
 
   // ── INISIALISASI ─────────────────────────────────────────────────────────────
   static Future<void> init() async {
@@ -32,23 +24,16 @@ class NotificationService {
 
     await _plugin.initialize(
       settings,
-      // Dipanggil saat notifikasi ditampilkan (foreground) atau ditap.
-      // Dipakai untuk mencatat riwayat ke NotificationHistoryService,
-      // supaya semua notifikasi yang benar-benar tampil ke user juga
-      // tercatat di halaman Riwayat Notifikasi.
       onDidReceiveNotificationResponse: _onNotificationTapped,
       onDidReceiveBackgroundNotificationResponse: notificationBackgroundHandler,
     );
 
-    // Minta permission notifikasi (Android 13+)
     await _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
   }
 
-  /// payload notifikasi memakai format "type|refId|title|body"
-  /// agar bisa langsung dicatat ke riwayat saat notifikasi tampil/ditap.
   static Future<void> _onNotificationTapped(
       NotificationResponse response) async {
     final payload = response.payload;
@@ -60,7 +45,7 @@ class NotificationService {
     final type = parts[0];
     final refId = parts[1];
     final title = parts[2];
-    final body = parts.sublist(3).join('|'); // body boleh mengandung '|'
+    final body = parts.sublist(3).join('|'); 
 
     await NotificationHistoryService.addEntry(
       title: title,
@@ -93,8 +78,8 @@ class NotificationService {
   static Future<void> scheduleJadwal({
     required int idJadwal,
     required String namaJadwal,
-    required String tanggal,   // "yyyy-MM-dd"
-    required String waktu,     // "HH:mm:ss"
+    required String tanggal,   
+    required String waktu,     
   }) async {
     final setting = await loadSetting();
     final bool aktif = setting['status'] as bool;
@@ -102,7 +87,6 @@ class NotificationService {
 
     final int reminderMenit = setting['reminder'] as int;
 
-    // Parse tanggal dan waktu jadwal
     final parts = waktu.split(':');
     final jadwalTime = DateTime(
       int.parse(tanggal.split('-')[0]),
@@ -112,10 +96,8 @@ class NotificationService {
       int.parse(parts[1]),
     );
 
-    // Waktu notifikasi = waktu jadwal - menit reminder
     final notifTime = jadwalTime.subtract(Duration(minutes: reminderMenit));
 
-    // Jangan jadwalkan kalau waktunya sudah lewat
     if (notifTime.isBefore(DateTime.now())) return;
 
     final tzNotifTime = tz.TZDateTime.from(notifTime, tz.local);
@@ -141,29 +123,19 @@ class NotificationService {
     );
   }
 
-  // ── JADWALKAN NOTIFIKASI BERDASARKAN WAKTU_SELESAI (deadline reminder) ───────
-  //
-  // Reminder = waktu_selesai - waktuNotif (menit), bukan waktu_mulai.
-  // waktuNotif diambil per-akun dari tabel akun (server), bukan dari
-  // setting lokal device, supaya konsisten dengan data yang user atur
-  // di halaman Profile/Settings.
-  //
-  // Jadwal yang timeless == 'y' (tidak punya jam) atau status != 'pending'
-  // dilewati, karena tidak relevan untuk reminder waktu.
   static Future<void> scheduleJadwalByEndTime({
     required int idJadwal,
     required String namaJadwal,
-    required String tanggal,       // "yyyy-MM-dd"
-    String? waktuSelesai,          // "HH:mm:ss", boleh null
-    String? timeless,              // "y" / "n"
-    String? status,                // "pending" / "selesai" / "terlewat"
-    required int waktuNotifMenit,  // dari tabel akun
+    required String tanggal,       
+    String? waktuSelesai,          
+    String? timeless,              
+    String? status,                
+    required int waktuNotifMenit,  
   }) async {
     final setting = await loadSetting();
     final bool aktifLokal = setting['status'] as bool;
     if (!aktifLokal) return;
 
-    // Lewati jadwal tanpa jam spesifik, atau yang sudah tidak pending
     if (timeless == 'y') return;
     if (status != null && status != 'pending') return;
     if (waktuSelesai == null || waktuSelesai.isEmpty) return;
@@ -182,14 +154,12 @@ class NotificationService {
         int.parse(wktParts[1]),
       );
     } catch (_) {
-      return; // format tanggal/waktu tidak valid, lewati daripada crash
+      return; 
     }
 
-    // Reminder = waktu_selesai - waktu_notif
     final notifTime =
         waktuSelesaiDt.subtract(Duration(minutes: waktuNotifMenit));
 
-    // Jangan jadwalkan kalau waktunya sudah lewat
     if (notifTime.isBefore(DateTime.now())) return;
 
     final tzNotifTime = tz.TZDateTime.from(notifTime, tz.local);
@@ -215,15 +185,10 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      // payload dipakai oleh _onNotificationTapped untuk mencatat riwayat
       payload: 'jadwal|$idJadwal|$title|$body',
     );
   }
 
-  // ── RESCHEDULE SEMUA JADWAL BERDASARKAN WAKTU_SELESAI (dipanggil saat fetch) ─
-  //
-  // [jadwalList] = hasil ApiService.getJadwal(idAkun)
-  // [waktuNotifMenit] = hasil parsing dari ApiService.getAkun(idAkun)
   static Future<void> rescheduleAllByEndTime({
     required List<dynamic> jadwalList,
     required int waktuNotifMenit,
@@ -247,11 +212,6 @@ class NotificationService {
     }
   }
 
-  // ── Ambil waktu_notif dari response ApiService.getAkun() ────────────────────
-  //
-  // Backend bisa mengembalikan field ini dengan penamaan berbeda
-  // (waktuNotif / waktu_notif / waktunotif), jadi dicoba berurutan.
-  // Default 30 menit kalau tidak ditemukan / tidak valid.
   static int parseWaktuNotif(Map<String, dynamic> akunData) {
     final raw = akunData['waktuNotif'] ??
         akunData['waktu_notif'] ??

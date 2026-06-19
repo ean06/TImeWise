@@ -178,7 +178,6 @@ class _LoginPageState extends State<LoginPage>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Tab Login / Register
                         Container(
                           height: 50,
                           decoration: BoxDecoration(

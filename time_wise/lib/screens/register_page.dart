@@ -83,10 +83,6 @@ class _RegisterPageState extends State<RegisterPage>
     });
 
     if (_isSuccess && mounted) {
-      // Endpoint /register pada banyak backend hanya membuat akun baru
-      // tanpa mengembalikan idAkun. Untuk memastikan sesi tersimpan dengan
-      // idAkun yang valid, lakukan login otomatis menggunakan kredensial
-      // yang baru saja didaftarkan.
       int idAkun = 0;
       final possibleId = result['idAkun'] ?? result['id_akun'] ?? result['idakun'];
       if (possibleId != null) {
@@ -201,7 +197,6 @@ class _RegisterPageState extends State<RegisterPage>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Tab Login / Register
                         Container(
                           height: 50,
                           decoration: BoxDecoration(

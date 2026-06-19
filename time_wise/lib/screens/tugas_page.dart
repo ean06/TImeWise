@@ -19,7 +19,7 @@ class _TugasPageState extends State<TugasPage> {
   String? _filterStatus;
 
   late DateTime _selectedDate;
-  bool _filterByDate = true; // true = tampilkan tugas sesuai tanggal terpilih
+  bool _filterByDate = true; 
   final ScrollController _calendarScrollController = ScrollController();
 
   @override
@@ -122,7 +122,7 @@ class _TugasPageState extends State<TugasPage> {
     }
   }
 
-  // ── Toggle status tugas (pending <-> selesai) ──────────────────────────
+  // ── Toggle status tugas ──────────────────────────
   Future<void> _toggleStatus(Map<String, dynamic> item) async {
     final localContext = context;
     final currentStatus = (item['status'] ?? 'pending').toString().toLowerCase();
@@ -272,14 +272,12 @@ class _TugasPageState extends State<TugasPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // ── Judul tugas ──
                 _buildInput(
                     controller: judulController,
                     hint: 'Judul Tugas',
                     icon: Icons.task_outlined),
                 const SizedBox(height: 10),
 
-                // ── Deskripsi ──
                 _buildInput(
                     controller: deskripsiController,
                     hint: 'Deskripsi (opsional)',
@@ -287,7 +285,6 @@ class _TugasPageState extends State<TugasPage> {
                     maxLines: 3),
                 const SizedBox(height: 10),
 
-                // ── Tanggal mulai ──
                 _buildInput(
                   controller: tanggalMulaiController,
                   hint: 'Tanggal Mulai (Klik untuk memilih)',
@@ -312,7 +309,6 @@ class _TugasPageState extends State<TugasPage> {
                 ),
                 const SizedBox(height: 10),
 
-                // ── Deadline ──
                 _buildInput(
                   controller: deadlineController,
                   hint: 'Deadline (Klik untuk memilih)',
@@ -340,7 +336,6 @@ class _TugasPageState extends State<TugasPage> {
                 ),
                 const SizedBox(height: 14),
 
-                // ── Kategori ──
                 if (kategoriList.isNotEmpty) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -494,7 +489,6 @@ class _TugasPageState extends State<TugasPage> {
                   const SizedBox(height: 14),
                 ],
 
-                // ── Prioritas ──
                 const Text('Prioritas',
                     style:
                         TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -532,7 +526,7 @@ class _TugasPageState extends State<TugasPage> {
                 ),
                 const SizedBox(height: 24),
 
-                // ── Pesan error inline (tidak akan tertutup modal) ──
+                // ── Pesan error inline ──
                 if (formError != null) ...[
                   Container(
                     width: double.infinity,
@@ -566,7 +560,6 @@ class _TugasPageState extends State<TugasPage> {
                   const SizedBox(height: 14),
                 ],
 
-                // ── Tombol simpan ──
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -590,7 +583,6 @@ class _TugasPageState extends State<TugasPage> {
                         return;
                       }
 
-                      // Validasi deadline >= tanggal mulai
                       final mulaiDate =
                           DateTime.parse(tanggalMulaiController.text.trim());
                       final deadlineDate =
@@ -671,16 +663,14 @@ class _TugasPageState extends State<TugasPage> {
     );
   }
 
-  // ── Buka halaman checklist ──────────────────────────────────────────
   void _openChecklist(Map<String, dynamic> tugas) async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChecklistPage(tugas: tugas)),
     );
-    _fetchTugas(); // refresh persentase setelah balik dari checklist
+    _fetchTugas(); 
   }
 
-  // ── Build ───────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final totalSelesai =
@@ -698,7 +688,6 @@ class _TugasPageState extends State<TugasPage> {
         child: SafeArea(
           child: Column(
             children: [
-              // ── Header ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                 child: Row(
@@ -734,7 +723,7 @@ class _TugasPageState extends State<TugasPage> {
               ),
               const SizedBox(height: 16),
 
-              // ── Kalender horizontal (berdasarkan deadline) ──
+              // ── Kalender horizontal ──
               SizedBox(
                 height: 80,
                 child: ListView.builder(
@@ -1085,7 +1074,6 @@ class _TugasPageState extends State<TugasPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Checkbox status
               GestureDetector(
                 onTap: () => _toggleStatus(item),
                 child: AnimatedContainer(
@@ -1115,7 +1103,6 @@ class _TugasPageState extends State<TugasPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Judul
                     Text(judul,
                         style: TextStyle(
                           fontSize: 14,
@@ -1141,7 +1128,6 @@ class _TugasPageState extends State<TugasPage> {
                                   : Colors.black45)),
                     ],
                     const SizedBox(height: 6),
-                    // Badge prioritas + status
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
@@ -1180,7 +1166,6 @@ class _TugasPageState extends State<TugasPage> {
                         ),
                       ],
                     ),
-                    // Kategori
                     if (namaKategori.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 6),
@@ -1206,7 +1191,6 @@ class _TugasPageState extends State<TugasPage> {
                           ],
                         ),
                       ),
-                    // Tanggal mulai & deadline
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Row(
@@ -1274,7 +1258,7 @@ class _TugasPageState extends State<TugasPage> {
           ),
           const SizedBox(height: 8),
 
-          // ── Progress bar checklist (turunan dari tugas) ──
+          // ── Progress bar checklist ──
           GestureDetector(
             onTap: () => _openChecklist(item),
             child: Row(

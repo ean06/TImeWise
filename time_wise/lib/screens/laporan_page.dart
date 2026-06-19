@@ -149,14 +149,12 @@ class _LaporanPageState extends State<LaporanPage> {
     return max == 0 ? 1 : max;
   }
 
-  // Warna tema untuk PDF
   static final PdfColor _pdfPrimary = PdfColor.fromInt(0xFF2EAD65);
   static final PdfColor _pdfPrimaryLight = PdfColor.fromInt(0xFFE8F8EF);
   static final PdfColor _pdfGrey = PdfColor.fromInt(0xFF6B7280);
   static final PdfColor _pdfRed = PdfColor.fromInt(0xFFE5484D);
   static final PdfColor _pdfBorder = PdfColor.fromInt(0xFFE2E8F0);
 
-  /// Menentukan status jadwal: Selesai, Terlewat, atau Mendatang.
   String _statusJadwal(Map<String, dynamic> item) {
     final rawStatus = (item['status'] ?? '').toString().toLowerCase();
     final isDoneFlag = item['is_done'] == true ||
@@ -201,7 +199,6 @@ class _LaporanPageState extends State<LaporanPage> {
     }
   }
 
-  /// Label status tugas dari backend (pending/selesai/terlambat) -> tampilan
   String _statusTugasLabel(Map<String, dynamic> item) {
     final s = (item['status'] ?? 'pending').toString().toLowerCase();
     switch (s) {
@@ -237,7 +234,6 @@ class _LaporanPageState extends State<LaporanPage> {
       final jamSibuk = (laporan['jam_sibuk'] as List?) ?? [];
       final totalJadwalServer = laporan['total_jadwal'] ?? _totalJadwal;
 
-      // ── Hitung status per jadwal (selesai / terlewat / mendatang) ──
       final List<Map<String, dynamic>> daftarJadwal = _allJadwal
           .map((e) => {...e, '_status': _statusJadwal(e)})
           .toList();
@@ -259,7 +255,6 @@ class _LaporanPageState extends State<LaporanPage> {
           ? 0.0
           : (jumlahTerlewat / totalJadwalCount) * 100;
 
-      // ── Ringkasan Tugas ──
       final daftarTugas = List<Map<String, dynamic>>.from(_allTugas);
       daftarTugas.sort((a, b) =>
           (b['deadline'] ?? '').toString().compareTo((a['deadline'] ?? '').toString()));
@@ -349,7 +344,6 @@ class _LaporanPageState extends State<LaporanPage> {
             ),
           ),
           build: (context) => [
-            // ── Header utama ──
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
@@ -382,7 +376,6 @@ class _LaporanPageState extends State<LaporanPage> {
             pw.Divider(color: PdfColors.grey300),
             pw.SizedBox(height: 12),
 
-            // ── Ringkasan ──
             sectionTitle('Ringkasan'),
             pw.Row(
               children: [
@@ -406,7 +399,6 @@ class _LaporanPageState extends State<LaporanPage> {
             ),
             pw.SizedBox(height: 16),
 
-            // ── Ringkasan Tugas ──
             sectionTitle('Ringkasan Tugas'),
             pw.Row(
               children: [
@@ -426,7 +418,6 @@ class _LaporanPageState extends State<LaporanPage> {
             ),
             pw.SizedBox(height: 16),
 
-            // ── Statistik periode ──
             sectionTitle('Statistik ${_tabs[_selectedTab]}'),
             pw.Table.fromTextArray(
               headers: ['Periode', 'Tanggal/Keterangan', 'Jumlah Jadwal'],
@@ -448,7 +439,6 @@ class _LaporanPageState extends State<LaporanPage> {
             ),
             pw.SizedBox(height: 16),
 
-            // ── Daftar Jadwal & Tugas ──
             sectionTitle('Daftar Jadwal & Tugas (${daftarJadwal.length})'),
             if (daftarJadwal.isEmpty)
               pw.Text('Belum ada data jadwal.',
@@ -534,7 +524,6 @@ class _LaporanPageState extends State<LaporanPage> {
               ),
             pw.SizedBox(height: 16),
 
-            // ── Daftar Tugas ──
             sectionTitle('Daftar Tugas ($totalTugas)'),
             if (daftarTugas.isEmpty)
               pw.Text('Belum ada data tugas.',
@@ -744,7 +733,6 @@ class _LaporanPageState extends State<LaporanPage> {
         child: SafeArea(
           child: Column(
             children: [
-              // ── Header ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                 child: Row(
@@ -802,7 +790,6 @@ class _LaporanPageState extends State<LaporanPage> {
 
               const SizedBox(height: 20),
 
-              // ── Rangkuman Cards ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
@@ -852,7 +839,6 @@ class _LaporanPageState extends State<LaporanPage> {
 
               const SizedBox(height: 24),
 
-              // ── Chart Area ──
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -924,7 +910,6 @@ class _LaporanPageState extends State<LaporanPage> {
 
                       const SizedBox(height: 8),
 
-                      // ── Chart label ──
                       Row(
                         children: [
                           Text(
@@ -959,7 +944,6 @@ class _LaporanPageState extends State<LaporanPage> {
 
                       const SizedBox(height: 16),
 
-                      // ── Bar Chart ──
                       Expanded(
                         child: _isLoading
                             ? const Center(

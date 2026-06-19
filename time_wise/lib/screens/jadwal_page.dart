@@ -127,7 +127,6 @@ class _JadwalPageState extends State<JadwalPage> {
     final localContext = context;
     final currentStatus = (item['status'] ?? 'pending').toString().toLowerCase();
 
-    // Jika sudah terlewat, tidak bisa diubah via checklist
     if (currentStatus == 'terlewat') {
       if (localContext.mounted) {
         ScaffoldMessenger.of(localContext).showSnackBar(
@@ -165,7 +164,6 @@ class _JadwalPageState extends State<JadwalPage> {
   // ── Form dialog tambah / edit ─────────────────────────────────────────
   void _showFormDialog({Map<String, dynamic>? existing}) async {
     final localContext = context;
-    // Load kategori dari backend
     final kategoriList = await ApiService.getKategori(_idAkun);
 
     if (!localContext.mounted) return;
@@ -245,14 +243,12 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // ── Nama kegiatan ──
                 _buildInput(
                     controller: namaController,
                     hint: 'Nama Kegiatan',
                     icon: Icons.event_outlined),
                 const SizedBox(height: 10),
 
-                // ── Tanggal kegiatan ──
                 _buildInput(
                   controller: tanggalController,
                   hint: 'Tanggal Kegiatan (Klik untuk memilih)',
@@ -278,7 +274,6 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 10),
 
-                // ── Timeless toggle ──
                 GestureDetector(
                   onTap: () => setModal(() {
                     isTimeless = !isTimeless;
@@ -352,7 +347,6 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 10),
 
-                // ── Waktu mulai ──
                 _buildInput(
                   controller: waktuController,
                   hint: 'Waktu Mulai (Klik untuk memilih)',
@@ -382,7 +376,6 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 10),
 
-                // ── Waktu selesai ──
                 _buildInput(
                   controller: waktuSelesaiController,
                   hint: 'Waktu Selesai (Klik untuk memilih)',
@@ -412,7 +405,6 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 10),
 
-                // ── Deadline ──
                 _buildInput(
                   controller: deadlineController,
                   hint: 'Deadline (Klik untuk memilih)',
@@ -441,7 +433,6 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 10),
 
-                // ── Catatan ──
                 _buildInput(
                   controller: catatanController,
                   hint: 'Catatan (opsional)',
@@ -450,7 +441,6 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 14),
 
-                // ── Kategori dropdown ──
                 if (kategoriList.isNotEmpty) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -498,7 +488,6 @@ class _JadwalPageState extends State<JadwalPage> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        // Option "Tanpa Kategori"
                         GestureDetector(
                           onTap: () =>
                               setModal(() => selectedKategoriId = null),
@@ -626,7 +615,6 @@ class _JadwalPageState extends State<JadwalPage> {
                   const SizedBox(height: 14),
                 ],
 
-                // ── Prioritas ──
                 const Text('Prioritas',
                     style:
                         TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -664,7 +652,6 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 24),
 
-                // ── Pesan error inline (tidak akan tertutup modal) ──
                 if (formError != null) ...[
                   Container(
                     width: double.infinity,
@@ -698,7 +685,6 @@ class _JadwalPageState extends State<JadwalPage> {
                   const SizedBox(height: 14),
                 ],
 
-                // ── Tombol simpan ──
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -706,21 +692,18 @@ class _JadwalPageState extends State<JadwalPage> {
                     onPressed: () async {
                       setModal(() => formError = null);
 
-                      // Validasi nama kegiatan
                       if (namaController.text.trim().isEmpty) {
                         setModal(() =>
                             formError = 'Nama kegiatan tidak boleh kosong');
                         return;
                       }
 
-                      // Validasi tanggal kegiatan
                       if (tanggalController.text.trim().isEmpty) {
                         setModal(() => formError =
                             'Tanggal kegiatan tidak boleh kosong');
                         return;
                       }
 
-                      // Validasi waktu: selesai harus setelah mulai
                       if (waktuController.text.isNotEmpty &&
                           waktuSelesaiController.text.isNotEmpty) {
                         final mulaiParts =
@@ -741,7 +724,6 @@ class _JadwalPageState extends State<JadwalPage> {
                         }
                       }
 
-                      // Validasi deadline: harus >= tanggal jadwal
                       if (deadlineController.text.isNotEmpty &&
                           tanggalController.text.isNotEmpty) {
                         final deadlineDate =
@@ -794,7 +776,6 @@ class _JadwalPageState extends State<JadwalPage> {
                           Navigator.pop(localContext);
                           _fetchJadwal();
 
-                          // Reschedule notification
                           if (waktuMulai != null) {
                             NotificationService.scheduleJadwal(
                               idJadwal: _idJadwal(existing),
@@ -824,9 +805,7 @@ class _JadwalPageState extends State<JadwalPage> {
                           Navigator.pop(localContext);
                           _fetchJadwal();
 
-                          // Schedule notification untuk jadwal baru
                           if (waktuMulai != null) {
-                            // Gunakan timestamp sementara sebagai ID
                             NotificationService.scheduleJadwal(
                               idJadwal:
                                   DateTime.now().millisecondsSinceEpoch %
@@ -903,7 +882,6 @@ class _JadwalPageState extends State<JadwalPage> {
     if (confirm == true) {
       final success = await ApiService.deleteJadwal(idJadwal);
       if (success) {
-        // Cancel scheduled notification
         NotificationService.cancelJadwal(idJadwal);
         _fetchJadwal();
         if (localContext.mounted) {
@@ -1249,7 +1227,6 @@ class _JadwalPageState extends State<JadwalPage> {
       ),
       child: Row(
         children: [
-          // Status toggle — nonaktif jika terlewat
           GestureDetector(
             onTap: isTerlewat ? null : () => _toggleStatus(item),
             child: Container(
@@ -1350,7 +1327,6 @@ class _JadwalPageState extends State<JadwalPage> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    // Status badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
@@ -1369,7 +1345,6 @@ class _JadwalPageState extends State<JadwalPage> {
                     ),
                   ],
                 ),
-                // Kategori badge
                 if (namaKategori.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -1397,7 +1372,6 @@ class _JadwalPageState extends State<JadwalPage> {
                       ],
                     ),
                   ),
-                // Deadline
                 if (deadline.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -1420,7 +1394,6 @@ class _JadwalPageState extends State<JadwalPage> {
                       ],
                     ),
                   ),
-                // Catatan
                 if (catatan.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),

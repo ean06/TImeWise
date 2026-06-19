@@ -41,7 +41,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       if (!mounted) return;
 
       if (result['status'] == 'success') {
-        // Update session lokal
         await SessionService.saveUsername(_usernameController.text.trim());
 
         if (!mounted) return;

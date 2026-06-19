@@ -55,7 +55,6 @@ public class ProfileController {
 
         String newUsername = request.get("username");
 
-        // Validasi username unik jika berubah
         if (newUsername != null && !newUsername.equals(akun.getUsername())) {
             Akun existing = akunRepository.findByUsername(newUsername);
             if (existing != null) {

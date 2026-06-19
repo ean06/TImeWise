@@ -73,7 +73,6 @@ public class Jadwal {
     public enum Prioritas { rendah, sedang, tinggi }
     public enum Status    { pending, selesai, terlewat }
 
-    // Getters & Setters
     public Integer getIdJadwal() { return idJadwal; }
     public void setIdJadwal(Integer idJadwal) { this.idJadwal = idJadwal; }
 

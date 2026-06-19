@@ -21,7 +21,6 @@ class _CalendarPageState extends State<CalendarPage> {
   List<Map<String, dynamic>> _allJadwal = [];
   List<Map<String, dynamic>> _allTugas = [];
 
-  // Set tanggal (yyyy-MM-dd) yang punya jadwal/tugas
   final Set<String> _markedDates = {};
 
   @override
@@ -41,8 +40,6 @@ class _CalendarPageState extends State<CalendarPage> {
 
     final jadwal = await ApiService.getJadwal(_idAkun);
 
-    // Tugas: gunakan ApiService.getTugas jika tersedia.
-    // Jika nama method berbeda, sesuaikan baris berikut.
     List<Map<String, dynamic>> tugas = [];
     try {
       tugas = await ApiService.getTugas(_idAkun);
@@ -139,7 +136,6 @@ class _CalendarPageState extends State<CalendarPage> {
     final firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
 
-    // Senin = 1 ... Minggu = 7. Geser supaya grid mulai dari Senin.
     final leadingEmpty = (firstDayOfMonth.weekday - 1) % 7;
 
     const namaHariSingkat = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];

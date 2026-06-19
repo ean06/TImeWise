@@ -37,7 +37,6 @@ class _NotificationPageState extends State<NotificationPage> {
           _menitCtrl.text = (res['waktu_notif'] ?? 30).toString();
           _isLoading = false;
         });
-        // Sync ke local storage untuk keperluan local scheduling
         await NotificationService.saveSetting(
           status: _notifAktif,
           reminderMenit: res['waktu_notif'] as int? ?? 30,
@@ -46,7 +45,6 @@ class _NotificationPageState extends State<NotificationPage> {
       }
     } catch (_) {}
 
-    // Fallback ke local storage jika request API gagal
     final setting = await NotificationService.loadSetting();
     setState(() {
       _notifAktif = setting['status'] as bool;
@@ -75,7 +73,6 @@ class _NotificationPageState extends State<NotificationPage> {
     if (!mounted) return;
 
     if (result['status'] == 'success') {
-      // Sync ke local storage jika update di backend berhasil
       await NotificationService.saveSetting(
         status: _notifAktif,
         reminderMenit: menit,
@@ -234,7 +231,6 @@ class _NotificationPageState extends State<NotificationPage> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Shortcut pilihan cepat
                           Wrap(
                             spacing: 8,
                             children: [15, 30, 60, 120].map((menit) {

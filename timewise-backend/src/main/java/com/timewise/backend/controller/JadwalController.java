@@ -159,17 +159,13 @@ public class JadwalController {
         return Map.of("rekomendasi", rekomendasi);
     }
 
-    // ── Auto-mark terlewat ────────────────────────────────
     private void autoMarkTerlewat(List<Jadwal> jadwalList) {
         LocalDateTime now = LocalDateTime.now();
         List<Jadwal> toUpdate = new ArrayList<>();
 
         for (Jadwal j : jadwalList) {
-            // Hanya proses jadwal yang masih pending
             if (j.getStatus() != Jadwal.Status.pending) continue;
-            // Timeless tidak punya waktu selesai, skip
             if (j.getTimeless() == Jadwal.Timeless.y) continue;
-            // Harus punya tanggal & waktu_selesai
             if (j.getTanggal() == null || j.getWaktuSelesai() == null) continue;
 
             LocalDateTime waktuSelesaiDt = LocalDateTime.of(j.getTanggal(), j.getWaktuSelesai());
@@ -184,7 +180,6 @@ public class JadwalController {
         }
     }
 
-    // ── Helper ────────────────────────────────────────────
 
     private Jadwal buildJadwal(Jadwal jadwal, TambahJadwalRequest req) {
         if (req.getNamaJadwal()   != null) jadwal.setNamaJadwal(req.getNamaJadwal());

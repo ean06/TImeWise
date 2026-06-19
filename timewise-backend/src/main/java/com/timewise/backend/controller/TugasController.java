@@ -23,7 +23,6 @@ public class TugasController {
     private final AkunRepository akunRepo;
     private final KategoriRepository kategoriRepo;
 
-    // ── TUGAS ─────────────────────────────────────────────
 
     @GetMapping
     public ResponseEntity<List<TugasResponse>> getAll(@RequestParam Integer idAkun) {
@@ -81,7 +80,6 @@ public class TugasController {
         return ResponseEntity.noContent().build();
     }
 
-    // ── CHECKLIST ─────────────────────────────────────────
 
     @GetMapping("/{idTugas}/checklist")
     public ResponseEntity<List<ChecklistResponse>> getChecklist(@PathVariable Integer idTugas) {
@@ -116,10 +114,9 @@ public class TugasController {
         c.setWaktuSelesai(selesai == Checklist.Selesai.y ? now : null);
         c.setTglSelesai(selesai == Checklist.Selesai.y ? now.toLocalDate() : null);
 
-        // Auto-update persentase_selesai pada tugas terkait
         Tugas tugas = c.getTugas();
         List<Checklist> all = checklistRepo.findByTugasIdTugas(tugas.getIdTugas());
-        checklistRepo.save(c); // simpan dulu agar ikut terhitung
+        checklistRepo.save(c); 
         long total = all.size();
         long done  = all.stream()
                 .filter(item -> item.getIdChecklist().equals(c.getIdChecklist())
@@ -150,7 +147,6 @@ public class TugasController {
         return ResponseEntity.noContent().build();
     }
 
-    // ── Mapper ────────────────────────────────────────────
 
     private TugasResponse toResponse(Tugas t) {
         TugasResponse r = new TugasResponse();
@@ -180,7 +176,6 @@ public class TugasController {
         return r;
     }
 
-    // ── Inner DTO ─────────────────────────────────────────
 
     @Data static class TugasRequest {
         private Integer idKategori;

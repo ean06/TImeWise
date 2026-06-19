@@ -2,9 +2,8 @@ package com.timewise.backend.dto;
 
 public class UpdateAkunRequest {
 
-    // Untuk update setting notifikasi user
-    private String statusNotif;   // "y" atau "n"
-    private Integer waktuNotif; // menit sebelum deadline
+    private String statusNotif;   
+    private Integer waktuNotif; 
 
     public String getStatusNotif() { return statusNotif; }
     public void setStatusNotif(String statusNotif) { this.statusNotif = statusNotif; }

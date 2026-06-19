@@ -1,15 +1,9 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Menyimpan riwayat notifikasi (reminder jadwal/tugas) secara lokal
-/// menggunakan SharedPreferences, agar bisa ditampilkan di halaman
-/// Riwayat Notifikasi.
 class NotificationHistoryService {
   static const _key = 'notification_history';
 
-  /// Tambah satu entri riwayat notifikasi.
-  /// [type] = 'jadwal' atau 'tugas'
-  /// [refId] = id_jadwal / id_tugas, dipakai untuk mencegah duplikasi.
   static Future<void> addEntry({
     required String title,
     required String body,
@@ -19,7 +13,6 @@ class NotificationHistoryService {
     final prefs = await SharedPreferences.getInstance();
     final list = await getHistory();
 
-    // Cegah duplikasi entry untuk refId + tipe yang sama dalam 1 hari
     final now = DateTime.now();
     final alreadyExists = list.any((e) {
       if (e['refId'] != refId || e['type'] != type) return false;
@@ -38,7 +31,6 @@ class NotificationHistoryService {
       'isRead': false,
     });
 
-    // Batasi maksimal 100 entri agar storage tidak membengkak
     if (list.length > 100) {
       list.removeRange(100, list.length);
     }
@@ -46,7 +38,6 @@ class NotificationHistoryService {
     await prefs.setString(_key, jsonEncode(list));
   }
 
-  /// Ambil semua riwayat notifikasi, terbaru di atas.
   static Future<List<Map<String, dynamic>>> getHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
@@ -60,7 +51,6 @@ class NotificationHistoryService {
     }
   }
 
-  /// Tandai satu entri sebagai sudah dibaca berdasarkan timestamp (unik).
   static Future<void> markAsRead(String timestamp) async {
     final prefs = await SharedPreferences.getInstance();
     final list = await getHistory();
@@ -75,7 +65,6 @@ class NotificationHistoryService {
     await prefs.setString(_key, jsonEncode(list));
   }
 
-  /// Tandai semua entri sebagai sudah dibaca.
   static Future<void> markAllAsRead() async {
     final prefs = await SharedPreferences.getInstance();
     final list = await getHistory();
@@ -87,13 +76,11 @@ class NotificationHistoryService {
     await prefs.setString(_key, jsonEncode(list));
   }
 
-  /// Hitung jumlah notifikasi yang belum dibaca.
   static Future<int> getUnreadCount() async {
     final list = await getHistory();
     return list.where((e) => e['isRead'] != true).length;
   }
 
-  /// Hapus satu entri berdasarkan timestamp.
   static Future<void> deleteEntry(String timestamp) async {
     final prefs = await SharedPreferences.getInstance();
     final list = await getHistory();
@@ -101,7 +88,6 @@ class NotificationHistoryService {
     await prefs.setString(_key, jsonEncode(list));
   }
 
-  /// Hapus semua riwayat notifikasi.
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);

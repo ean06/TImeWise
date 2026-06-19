@@ -14,7 +14,6 @@ class _KategoriPageState extends State<KategoriPage> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _kategoriList = [];
 
-  // Daftar warna pilihan untuk picker
   final List<String> _warnaOptions = const [
     '#6C63FF',
     '#2EAD65',
@@ -73,7 +72,6 @@ class _KategoriPageState extends State<KategoriPage> {
 
     String selectedWarna = existing?['warna']?.toString() ?? _warnaOptions.first;
 
-    // Jika warna existing tidak ada di list, tambahkan agar tetap muncul
     final List<String> warnaOptions = List.from(_warnaOptions);
     if (!warnaOptions.contains(selectedWarna)) {
       warnaOptions.insert(0, selectedWarna);
@@ -118,7 +116,6 @@ class _KategoriPageState extends State<KategoriPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // ── Nama ──
                 const Text(
                   'Nama Kategori',
                   style: TextStyle(
@@ -136,7 +133,6 @@ class _KategoriPageState extends State<KategoriPage> {
 
                 const SizedBox(height: 20),
 
-                // ── Pilih Warna ──
                 const Text(
                   'Pilih Warna',
                   style: TextStyle(
@@ -185,7 +181,6 @@ class _KategoriPageState extends State<KategoriPage> {
 
                 const SizedBox(height: 28),
 
-                // ── Tombol Simpan ──
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
