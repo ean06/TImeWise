@@ -16,17 +16,20 @@ class ApiService {
 
   // ── Auth ──────────────────────────────────────────────────────────────
 
-  static Future<String> register(String username, String password) async {
+  static Future<Map<String, dynamic>> register(
+      String username, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'username': username, 'password': password}),
       );
+      debugPrint('[register] status=${response.statusCode} body=${response.body}');
       final data = jsonDecode(response.body);
-      return data['status'] ?? 'error';
-    } catch (_) {
-      return 'error';
+      return Map<String, dynamic>.from(data);
+    } catch (e) {
+      debugPrint('[register] ERROR: $e');
+      return {'status': 'error', 'message': 'Koneksi gagal. Periksa server.'};
     }
   }
 
@@ -204,12 +207,21 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
       );
-      return Map<String, dynamic>.from(jsonDecode(response.body));
-    } catch (_) {
+      debugPrint('[tambahTugas] status=${response.statusCode} body=${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Map<String, dynamic>.from(jsonDecode(response.body));
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[tambahTugas] ERROR: $e');
       return null;
     }
   }
 
+  /// Update tugas. Mengembalikan Map data tugas jika sukses.
+  /// Jika backend menolak (mis. status 400 karena checklist belum lengkap),
+  /// hasil berisi {'error': true, 'message': '...'} agar pesan dari server
+  /// bisa ditampilkan ke pengguna.
   static Future<Map<String, dynamic>?> updateTugas(
       int idTugas, Map<String, dynamic> body) async {
     try {
@@ -218,8 +230,26 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
       );
-      return Map<String, dynamic>.from(jsonDecode(response.body));
-    } catch (_) {
+      debugPrint('[updateTugas] status=${response.statusCode} body=${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Map<String, dynamic>.from(jsonDecode(response.body));
+      }
+
+      if (response.statusCode == 400) {
+        String message = 'Permintaan tidak valid';
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map && decoded['message'] != null) {
+            message = decoded['message'].toString();
+          }
+        } catch (_) {}
+        return {'error': true, 'message': message};
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('[updateTugas] ERROR: $e');
       return null;
     }
   }
@@ -271,6 +301,26 @@ class ApiService {
       );
       return Map<String, dynamic>.from(jsonDecode(response.body));
     } catch (_) {
+      return null;
+    }
+  }
+
+  // Update isi (teks) checklist tanpa mengubah status selesai
+  static Future<Map<String, dynamic>?> updateChecklistIsi(
+      int idChecklist, String isi) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/tugas/checklist/$idChecklist/isi'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'isi': isi}),
+      );
+      debugPrint('[updateChecklistIsi] status=${response.statusCode} body=${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Map<String, dynamic>.from(jsonDecode(response.body));
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[updateChecklistIsi] ERROR: $e');
       return null;
     }
   }

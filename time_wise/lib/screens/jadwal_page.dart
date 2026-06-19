@@ -209,6 +209,7 @@ class _JadwalPageState extends State<JadwalPage> {
             existing['waktu_selesai'].toString().isEmpty);
 
     int? selectedKategoriId = existing?['id_kategori'] as int?;
+    String? formError;
 
     showModalBottomSheet(
       context: localContext,
@@ -663,33 +664,59 @@ class _JadwalPageState extends State<JadwalPage> {
                 ),
                 const SizedBox(height: 24),
 
+                // ── Pesan error inline (tidak akan tertutup modal) ──
+                if (formError != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: Colors.redAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.error_outline,
+                            color: Colors.redAccent, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            formError!,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
                 // ── Tombol simpan ──
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
                     onPressed: () async {
+                      setModal(() => formError = null);
+
                       // Validasi nama kegiatan
                       if (namaController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content:
-                                Text('Nama kegiatan tidak boleh kosong'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
+                        setModal(() =>
+                            formError = 'Nama kegiatan tidak boleh kosong');
                         return;
                       }
 
                       // Validasi tanggal kegiatan
                       if (tanggalController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content:
-                                Text('Tanggal kegiatan tidak boleh kosong'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
+                        setModal(() => formError =
+                            'Tanggal kegiatan tidak boleh kosong');
                         return;
                       }
 
@@ -708,13 +735,8 @@ class _JadwalPageState extends State<JadwalPage> {
                                 int.parse(selesaiParts[1]);
 
                         if (selesaiMinutes <= mulaiMinutes) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Waktu selesai harus setelah waktu mulai'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
+                          setModal(() => formError =
+                              'Waktu selesai harus setelah waktu mulai');
                           return;
                         }
                       }
@@ -727,13 +749,8 @@ class _JadwalPageState extends State<JadwalPage> {
                         final jadwalDate =
                             DateTime.parse(tanggalController.text);
                         if (deadlineDate.isBefore(jadwalDate)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Deadline tidak boleh sebelum tanggal jadwal'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
+                          setModal(() => formError =
+                              'Deadline tidak boleh sebelum tanggal jadwal');
                           return;
                         }
                       }
@@ -795,13 +812,8 @@ class _JadwalPageState extends State<JadwalPage> {
                             ),
                           );
                         } else {
-                          ScaffoldMessenger.of(localContext).showSnackBar(
-                            const SnackBar(
-                              content:
-                                  Text('Gagal memperbarui jadwal'),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
+                          setModal(() =>
+                              formError = 'Gagal memperbarui jadwal');
                         }
                       } else {
                         final result =
@@ -835,22 +847,11 @@ class _JadwalPageState extends State<JadwalPage> {
                             ),
                           );
                         } else if (result['status'] == 'conflict') {
-                          ScaffoldMessenger.of(localContext).showSnackBar(
-                            SnackBar(
-                              content: Text(result['message'] ??
-                                  'Jadwal bertabrakan dengan jadwal lain'),
-                              backgroundColor: Colors.orange,
-                              duration: const Duration(seconds: 4),
-                            ),
-                          );
+                          setModal(() => formError = result['message'] ??
+                              'Jadwal bertabrakan dengan jadwal lain');
                         } else {
-                          ScaffoldMessenger.of(localContext).showSnackBar(
-                            const SnackBar(
-                              content:
-                                  Text('Gagal menyimpan jadwal'),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
+                          setModal(() =>
+                              formError = 'Gagal menyimpan jadwal');
                         }
                       }
                     },

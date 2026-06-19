@@ -21,9 +21,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@CrossOrigin("*")
-public class JadwalController {
+@CrossOrigin(origins = "*")
 
+public class JadwalController {
     @Autowired private JadwalRepository jadwalRepository;
     @Autowired private AkunRepository akunRepository;
     @Autowired private KategoriRepository kategoriRepository;

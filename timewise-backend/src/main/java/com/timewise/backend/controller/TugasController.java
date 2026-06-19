@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
+@CrossOrigin(origins = "*")
 @RequestMapping("/api/tugas")
 @RequiredArgsConstructor
 public class TugasController {
@@ -131,6 +132,16 @@ public class TugasController {
         }
 
         return ResponseEntity.ok(toChecklistResponse(c));
+    }
+
+    @PutMapping("/checklist/{idChecklist}/isi")
+    public ResponseEntity<ChecklistResponse> updateChecklistIsi(
+            @PathVariable Integer idChecklist,
+            @RequestBody ChecklistRequest req) {
+
+        Checklist c = checklistRepo.findById(idChecklist).orElseThrow();
+        c.setIsi(req.getIsi());
+        return ResponseEntity.ok(toChecklistResponse(checklistRepo.save(c)));
     }
 
     @DeleteMapping("/checklist/{idChecklist}")

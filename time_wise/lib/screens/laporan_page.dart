@@ -17,6 +17,7 @@ class _LaporanPageState extends State<LaporanPage> {
   int _selectedTab = 0;
   final List<String> _tabs = ['Harian', 'Mingguan', 'Bulanan'];
   List<Map<String, dynamic>> _allJadwal = [];
+  List<Map<String, dynamic>> _allTugas = [];
   bool _isLoading = false;
   bool _isExporting = false;
   int _idAkun = 0;
@@ -34,9 +35,11 @@ class _LaporanPageState extends State<LaporanPage> {
 
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
-    final data = await ApiService.getJadwal(_idAkun);
+    final jadwal = await ApiService.getJadwal(_idAkun);
+    final tugas = await ApiService.getTugas(_idAkun);
     setState(() {
-      _allJadwal = data;
+      _allJadwal = jadwal;
+      _allTugas = tugas;
       _isLoading = false;
     });
   }
@@ -191,10 +194,29 @@ class _LaporanPageState extends State<LaporanPage> {
       case 'Selesai':
         return _pdfPrimary;
       case 'Terlewat':
+      case 'Terlambat':
         return _pdfRed;
       default:
         return _pdfGrey;
     }
+  }
+
+  /// Label status tugas dari backend (pending/selesai/terlambat) -> tampilan
+  String _statusTugasLabel(Map<String, dynamic> item) {
+    final s = (item['status'] ?? 'pending').toString().toLowerCase();
+    switch (s) {
+      case 'selesai':
+        return 'Selesai';
+      case 'terlambat':
+        return 'Terlambat';
+      default:
+        return 'Pending';
+    }
+  }
+
+  String _prioritasLabel(Map<String, dynamic> item) {
+    final p = (item['prioritas'] ?? 'sedang').toString();
+    return p.isEmpty ? p : p[0].toUpperCase() + p.substring(1).toLowerCase();
   }
 
   Future<void> _exportPdf() async {
@@ -236,6 +258,23 @@ class _LaporanPageState extends State<LaporanPage> {
       final persenTerlewat = totalJadwalCount == 0
           ? 0.0
           : (jumlahTerlewat / totalJadwalCount) * 100;
+
+      // ── Ringkasan Tugas ──
+      final daftarTugas = List<Map<String, dynamic>>.from(_allTugas);
+      daftarTugas.sort((a, b) =>
+          (b['deadline'] ?? '').toString().compareTo((a['deadline'] ?? '').toString()));
+
+      final totalTugas = daftarTugas.length;
+      final tugasSelesai = daftarTugas
+          .where((t) => (t['status'] ?? '') == 'selesai')
+          .length;
+      final tugasTerlambat = daftarTugas
+          .where((t) => (t['status'] ?? '') == 'terlambat')
+          .length;
+      final tugasPending = totalTugas - tugasSelesai - tugasTerlambat;
+      final persenTugasSelesai = totalTugas == 0
+          ? 0.0
+          : (tugasSelesai / totalTugas) * 100;
 
       final doc = pw.Document();
       final now = DateTime.now();
@@ -367,6 +406,26 @@ class _LaporanPageState extends State<LaporanPage> {
             ),
             pw.SizedBox(height: 16),
 
+            // ── Ringkasan Tugas ──
+            sectionTitle('Ringkasan Tugas'),
+            pw.Row(
+              children: [
+                statTile('Total Tugas', '$totalTugas'),
+                statTile('Selesai', '$tugasSelesai', color: _pdfPrimary),
+                statTile('Terlambat', '$tugasTerlambat', color: _pdfRed),
+                statTile('Pending', '$tugasPending'),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+            pw.Row(
+              children: [
+                statTile('% Tugas Selesai',
+                    '${persenTugasSelesai.toStringAsFixed(1)}%',
+                    color: _pdfPrimary),
+              ],
+            ),
+            pw.SizedBox(height: 16),
+
             // ── Statistik periode ──
             sectionTitle('Statistik ${_tabs[_selectedTab]}'),
             pw.Table.fromTextArray(
@@ -455,6 +514,111 @@ class _LaporanPageState extends State<LaporanPage> {
                               vertical: 4, horizontal: 6),
                           child: pw.Text(jam,
                               style: const pw.TextStyle(fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(
+                            status,
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                              color: _statusColor(status),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            pw.SizedBox(height: 16),
+
+            // ── Daftar Tugas ──
+            sectionTitle('Daftar Tugas ($totalTugas)'),
+            if (daftarTugas.isEmpty)
+              pw.Text('Belum ada data tugas.',
+                  style: pw.TextStyle(fontSize: 10, color: _pdfGrey))
+            else
+              pw.Table(
+                border: pw.TableBorder.all(color: _pdfBorder, width: 0.5),
+                columnWidths: const {
+                  0: pw.FlexColumnWidth(2.6),
+                  1: pw.FlexColumnWidth(1.1),
+                  2: pw.FlexColumnWidth(1.3),
+                  3: pw.FlexColumnWidth(1.3),
+                  4: pw.FlexColumnWidth(1.1),
+                  5: pw.FlexColumnWidth(1.2),
+                },
+                children: [
+                  pw.TableRow(
+                    decoration: pw.BoxDecoration(color: _pdfPrimary),
+                    children: [
+                      'Judul Tugas',
+                      'Prioritas',
+                      'Mulai',
+                      'Deadline',
+                      'Progress',
+                      'Status',
+                    ]
+                        .map((h) => pw.Padding(
+                              padding: const pw.EdgeInsets.symmetric(
+                                  vertical: 5, horizontal: 6),
+                              child: pw.Text(h,
+                                  style: pw.TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.white)),
+                            ))
+                        .toList(),
+                  ),
+                  ...daftarTugas.map((item) {
+                    final judul = (item['judul'] ?? '-').toString();
+                    final prioritas = _prioritasLabel(item);
+                    final mulaiRaw = (item['tanggalMulai'] ?? '').toString();
+                    final mulai =
+                        mulaiRaw.length >= 10 ? mulaiRaw.substring(0, 10) : mulaiRaw;
+                    final deadlineRaw = (item['deadline'] ?? '').toString();
+                    final deadline = deadlineRaw.length >= 10
+                        ? deadlineRaw.substring(0, 10)
+                        : deadlineRaw;
+                    final persen = (item['persentaseSelesai'] ?? 0);
+                    final status = _statusTugasLabel(item);
+
+                    return pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(judul,
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(prioritas,
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(mulai,
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text(deadline,
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          child: pw.Text('$persen%',
+                              style: pw.TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: _pdfPrimary)),
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.symmetric(
@@ -641,22 +805,46 @@ class _LaporanPageState extends State<LaporanPage> {
               // ── Rangkuman Cards ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _buildSummaryCard(
-                        'Total Jadwal',
-                        '$_totalJadwal',
-                        Icons.calendar_month_outlined,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSummaryCard(
+                            'Total Jadwal',
+                            '$_totalJadwal',
+                            Icons.calendar_month_outlined,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSummaryCard(
+                            'Rata-rata',
+                            '$avg / periode',
+                            Icons.trending_up,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildSummaryCard(
-                        'Rata-rata',
-                        '$avg / periode',
-                        Icons.trending_up,
-                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSummaryCard(
+                            'Total Tugas',
+                            '${_allTugas.length}',
+                            Icons.task_alt_outlined,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSummaryCard(
+                            'Tugas Selesai',
+                            '${_allTugas.where((t) => (t['status'] ?? '') == 'selesai').length}',
+                            Icons.check_circle_outline,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

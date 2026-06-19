@@ -56,7 +56,7 @@ class _CalendarPageState extends State<CalendarPage> {
       if (tgl.length >= 10) marks.add(tgl.substring(0, 10));
     }
     for (final t in tugas) {
-      final tgl = (t['tanggal'] ?? t['deadline'] ?? '').toString();
+      final tgl = (t['deadline'] ?? '').toString();
       if (tgl.length >= 10) marks.add(tgl.substring(0, 10));
     }
 
@@ -88,10 +88,18 @@ class _CalendarPageState extends State<CalendarPage> {
 
   List<Map<String, dynamic>> get _tugasSelected {
     final key = _dateKey(_selectedDate);
-    return _allTugas.where((t) {
-      final tgl = (t['tanggal'] ?? t['deadline'] ?? '').toString();
+    final list = _allTugas.where((t) {
+      final tgl = (t['deadline'] ?? '').toString();
       return tgl.length >= 10 && tgl.substring(0, 10) == key;
     }).toList();
+
+    const urutanPrioritas = {'tinggi': 0, 'sedang': 1, 'rendah': 2};
+    list.sort((a, b) {
+      final pa = urutanPrioritas[(a['prioritas'] ?? 'sedang').toString().toLowerCase()] ?? 1;
+      final pb = urutanPrioritas[(b['prioritas'] ?? 'sedang').toString().toLowerCase()] ?? 1;
+      return pa.compareTo(pb);
+    });
+    return list;
   }
 
   void _prevMonth() {
@@ -361,11 +369,11 @@ class _CalendarPageState extends State<CalendarPage> {
                         const SizedBox(height: 16),
                       ],
                       if (_tugasSelected.isNotEmpty) ...[
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
                           child: Text(
-                            'Tugas',
-                            style: TextStyle(
+                            'Tugas (deadline ${_tugasSelected.length})',
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: Colors.black54,
@@ -449,7 +457,13 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _buildTugasItem(Map<String, dynamic> item) {
-    final nama = (item['judul'] ?? item['nama_tugas'] ?? item['namaTugas'] ?? '').toString();
+    final nama = (item['judul'] ?? '').toString();
+    final prioritas = (item['prioritas'] ?? 'sedang').toString().toLowerCase();
+    final color = _priorityColor(prioritas);
+    final status = (item['status'] ?? 'pending').toString().toLowerCase();
+    final persen = (item['persentaseSelesai'] ?? 0);
+    final isSelesai = status == 'selesai';
+    final isTerlambat = status == 'terlambat';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -457,7 +471,9 @@ class _CalendarPageState extends State<CalendarPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFF9800).withOpacity(0.15)),
+        border: Border.all(
+            color: (isTerlambat ? const Color(0xFFE91E63) : color)
+                .withOpacity(0.15)),
       ),
       child: Row(
         children: [
@@ -465,19 +481,57 @@ class _CalendarPageState extends State<CalendarPage> {
             width: 4,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFFF9800),
+              color: isTerlambat ? const Color(0xFFE91E63) : color,
               borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              nama,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: Colors.black87,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  nama,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: isSelesai ? Colors.black38 : Colors.black87,
+                    decoration:
+                        isSelesai ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        prioritas[0].toUpperCase() + prioritas.substring(1),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isTerlambat ? 'Terlambat' : '$persen% selesai',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isTerlambat
+                            ? const Color(0xFFE91E63)
+                            : Colors.black38,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],

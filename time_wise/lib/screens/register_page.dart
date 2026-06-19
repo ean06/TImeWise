@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/session_service.dart';
 import 'home_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -59,16 +60,20 @@ class _RegisterPageState extends State<RegisterPage>
       return;
     }
 
-    String result = await ApiService.register(
-      usernameController.text.trim(),
+    final usernameInput = usernameController.text.trim();
+
+    final result = await ApiService.register(
+      usernameInput,
       passwordController.text,
     );
 
+    final status = (result['status'] ?? 'error').toString();
+
     setState(() {
-      if (result == "success" || result == "registered") {
+      if (status == "success" || status == "registered") {
         message = "Register Berhasil";
         _isSuccess = true;
-      } else if (result == "username_taken" || result == "exists") {
+      } else if (status == "username_taken" || status == "exists") {
         message = "Username sudah digunakan";
         _isSuccess = false;
       } else {
@@ -78,6 +83,38 @@ class _RegisterPageState extends State<RegisterPage>
     });
 
     if (_isSuccess && mounted) {
+      // Endpoint /register pada banyak backend hanya membuat akun baru
+      // tanpa mengembalikan idAkun. Untuk memastikan sesi tersimpan dengan
+      // idAkun yang valid, lakukan login otomatis menggunakan kredensial
+      // yang baru saja didaftarkan.
+      int idAkun = 0;
+      final possibleId = result['idAkun'] ?? result['id_akun'] ?? result['idakun'];
+      if (possibleId != null) {
+        idAkun = possibleId is int
+            ? possibleId
+            : int.tryParse(possibleId.toString()) ?? 0;
+      }
+
+      if (idAkun == 0) {
+        final loginResult = await ApiService.login(
+          usernameInput,
+          passwordController.text,
+        );
+        final loginId = loginResult['idAkun'] ??
+            loginResult['id_akun'] ??
+            loginResult['idakun'];
+        if (loginId != null) {
+          idAkun = loginId is int
+              ? loginId
+              : int.tryParse(loginId.toString()) ?? 0;
+        }
+      }
+
+      await SessionService.saveSession(
+        idAkun: idAkun,
+        username: usernameInput,
+      );
+
       await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
       Navigator.pushReplacement(
